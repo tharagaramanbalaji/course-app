@@ -1,8 +1,8 @@
 """Shared pytest fixtures.
 
-The default test database is an in-memory SQLite instance so the suite runs
-without Postgres. Tests that exercise Postgres-specific behaviour should set
-DATABASE_URL_OVERRIDE to a real Postgres URL.
+The suite runs against in-memory SQLite so it needs no PostgreSQL instance.
+Foreign keys are switched on explicitly, because SQLite ignores them by
+default and the cascade and RESTRICT rules are worth testing.
 """
 
 import os
@@ -12,8 +12,16 @@ os.environ.setdefault("DATABASE_URL_OVERRIDE", "sqlite+aiosqlite:///:memory:")
 
 import pytest  # noqa: E402
 from httpx import ASGITransport, AsyncClient  # noqa: E402
+from sqlalchemy import event  # noqa: E402
+from sqlalchemy.ext.asyncio import (  # noqa: E402
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
+from sqlalchemy.pool import StaticPool  # noqa: E402
 
 from app.main import create_app  # noqa: E402
+from app.models import Base  # noqa: E402
 
 
 @pytest.fixture
@@ -22,3 +30,28 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+@pytest.fixture
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """A session against a fresh schema, isolated per test."""
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _enable_foreign_keys(dbapi_connection, _record):  # noqa: ANN001
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
+        yield session
+
+    await engine.dispose()
