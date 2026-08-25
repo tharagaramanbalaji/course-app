@@ -18,6 +18,7 @@ course-app/
 |   |   +-- core/         # settings, error envelope
 |   |   +-- db/           # declarative base, async session
 |   |   +-- models/       # SQLAlchemy models
+|   |   +-- repositories/ # data access, ownership and user filtering
 |   |   +-- schemas/      # Pydantic request/response models
 |   |   +-- services/     # business logic (scoring, progress, completion)
 |   |   +-- main.py       # app factory

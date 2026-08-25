@@ -38,7 +38,9 @@ TypeScript) + Vite + React Router + TanStack Query + Tailwind. Components are
 - Error envelope: `{"error": {"code", "message", "details"}}` via `app/core/exceptions.py`.
   Raise `NotFoundError` / `ConflictError` / `BusinessRuleError` / `PermissionDeniedError`
   rather than bare `HTTPException`.
-- Endpoints stay thin: validation in `schemas/`, rules in `services/`.
+- Endpoints stay thin: validation in `schemas/`, rules in `services/`, queries in
+  `repositories/`. Repositories hold no business rules.
 - Ownership and user filtering are enforced in the query/service layer, never in the client.
+- Repositories stage writes; the service layer commits, so one operation is one transaction.
 - New models must be imported in `app/models/__init__.py` for Alembic autogenerate.
 - Backend tests run against in-memory SQLite via `DATABASE_URL_OVERRIDE`.
