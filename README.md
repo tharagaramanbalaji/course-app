@@ -12,33 +12,33 @@ take quizzes, progress module by module, and receive a certificate on completion
 
 ```
 course-app/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/       # routers + endpoints
-│   │   ├── core/         # settings, error envelope
-│   │   ├── db/           # declarative base, async session
-│   │   ├── models/       # SQLAlchemy models
-│   │   ├── schemas/      # Pydantic request/response models
-│   │   ├── services/     # business logic (scoring, progress, completion)
-│   │   └── main.py       # app factory
-│   ├── alembic/          # migrations
-│   └── tests/
-├── frontend/
-│   └── src/
-│       ├── api/          # axios client
-│       ├── app/          # App shell + router
-│       ├── components/   # shared UI
-│       ├── features/     # feature modules
-│       ├── pages/        # route pages
-│       └── test/         # test setup
-└── docker-compose.yml    # PostgreSQL 16
++-- backend/
+|   +-- app/
+|   |   +-- api/v1/       # routers + endpoints
+|   |   +-- core/         # settings, error envelope
+|   |   +-- db/           # declarative base, async session
+|   |   +-- models/       # SQLAlchemy models
+|   |   +-- schemas/      # Pydantic request/response models
+|   |   +-- services/     # business logic (scoring, progress, completion)
+|   |   +-- main.py       # app factory
+|   +-- alembic/          # migrations
+|   +-- tests/
++-- frontend/
+|   +-- src/
+|       +-- api/          # axios client
+|       +-- app/          # App shell + router
+|       +-- components/   # shared UI
+|       +-- features/     # feature modules
+|       +-- pages/        # route pages
+|       +-- test/         # test setup
++-- docker-compose.yml    # PostgreSQL 16
 ```
 
 ## Getting started
 
 ### 1. Database
 
-PostgreSQL 18 is already installed locally (`C:\Program Files\PostgreSQL8`)
+PostgreSQL 18 is already installed locally (`C:\Program Files\PostgreSQL\18`)
 and listening on port 5432, but the `courseapp` role does not exist yet.
 Create it once, using your `postgres` superuser password:
 
@@ -48,7 +48,7 @@ Create it once, using your `postgres` superuser password:
 
 Docker is not installed on this machine. If you would rather use the bundled
 container (Postgres 16), install Docker Desktop and run `docker compose up -d`
-instead � the credentials in `docker-compose.yml` match `backend/.env.example`.
+instead - the credentials in `docker-compose.yml` match `backend/.env.example`.
 
 Verify the connection at http://localhost:8000/api/v1/health/db once the backend
 is running.
@@ -65,7 +65,7 @@ Copy `.env.example` to `.env` and set a real `SECRET_KEY`. Then run the API:
 cd backend && .venv/Scripts/python -m uvicorn app.main:app --reload
 ```
 
-API docs: http://localhost:8000/docs — health check: http://localhost:8000/api/v1/health
+API docs: http://localhost:8000/docs - health check: http://localhost:8000/api/v1/health
 
 Migrations (once models exist):
 
@@ -93,7 +93,7 @@ cd frontend && npm install
 cd frontend && npm run dev
 ```
 
-App: http://localhost:5173 — `/api` is proxied to the backend on port 8000.
+App: http://localhost:5173 - `/api` is proxied to the backend on port 8000.
 
 ```bash
 cd frontend && npm test
@@ -104,4 +104,4 @@ cd frontend && npm test
 - UUID primary keys, timestamps on every table (`app/db/base.py` mixins).
 - All errors use one envelope: `{"error": {"code", "message", "details"}}`.
 - The backend is the source of truth for scoring, progress, completion,
-  ownership and certificates — never the client.
+  ownership and certificates - never the client.

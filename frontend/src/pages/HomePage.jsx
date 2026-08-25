@@ -17,7 +17,7 @@ export default function HomePage() {
       <p className="text-slate-600">
         Backend status:{" "}
         <span className="font-mono">
-          {isPending ? "checking…" : isError ? "unreachable" : data?.status}
+          {isPending ? "checking..." : isError ? "unreachable" : data?.status}
         </span>
       </p>
     </section>

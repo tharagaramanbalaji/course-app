@@ -1,4 +1,4 @@
-# Course Training Platform — working notes
+# Course Training Platform - working notes
 
 Full-stack training app. Backend is the source of truth for auth, ownership,
 enrollment, progress, quiz scoring, retries, completion and certificates.
@@ -14,15 +14,15 @@ TypeScript) + Vite + React Router + TanStack Query + Tailwind. Components are
 
 - Roles: `ADMIN`, `INSTRUCTOR`, `USER`. Authoring is scoped to owned courses:
   every course-scoped admin operation verifies `auth_user.id == course.created_by`.
-- Course lifecycle `DRAFT → PUBLISHED → ARCHIVED`. V1 has **no** post-publication
+- Course lifecycle `DRAFT -> PUBLISHED -> ARCHIVED`. V1 has **no** post-publication
   editing and no versioning; mutations on a published course return a business-rule error.
-- Hierarchy: Course → Module → (Content, Quiz → Question → Answer). One quiz per module.
+- Hierarchy: Course -> Module -> (Content, Quiz -> Question -> Answer). One quiz per module.
 - Module completion is derived: all required content completed **and** quiz passed.
   Course completion is derived: every module completed. No client-driven "complete" endpoints.
 - Assignment and Enrollment are separate tables. Enrollment source is
   `ASSIGNMENT` or `SELF_ENROLLED`; self-enrollment requires
   `courses.allow_self_enrollment` and a `PUBLISHED` course.
-- Modules are sequential in V1 — the backend decides accessibility (locked/unlocked).
+- Modules are sequential in V1 - the backend decides accessibility (locked/unlocked).
 - Quiz security: user-facing responses must never include `isCorrect`. Correctness,
   scoring and pass/fail are computed from the database.
 - Attempts: backend assigns the attempt number and enforces `max_attempts`.
