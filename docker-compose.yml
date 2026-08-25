@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: course-app-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: courseapp
+      POSTGRES_PASSWORD: courseapp
+      POSTGRES_DB: courseapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - course_app_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U courseapp -d courseapp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  course_app_pgdata:
