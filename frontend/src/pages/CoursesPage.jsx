@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import { api, getApiErrorMessage, getApiErrorProblems } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
@@ -195,22 +196,33 @@ export default function CoursesPage() {
                 </p>
               </div>
 
-              {isAuthor && course.status === "DRAFT" && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => publishCourse.mutate(course.id)}
-                    className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100"
+              {isAuthor && (
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to={`/courses/${course.id}/manage`}
+                    className="rounded bg-slate-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-slate-800"
                   >
-                    Publish
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => deleteCourse.mutate(course.id)}
-                    className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
-                  >
-                    Delete
-                  </button>
+                    Manage Modules & Lessons
+                  </Link>
+
+                  {course.status === "DRAFT" && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => publishCourse.mutate(course.id)}
+                        className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100"
+                      >
+                        Publish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteCourse.mutate(course.id)}
+                        className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
