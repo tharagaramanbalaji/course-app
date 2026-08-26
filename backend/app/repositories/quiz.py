@@ -4,8 +4,9 @@ from collections.abc import Sequence
 from uuid import UUID
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 
+from app.models.module import Module
 from app.models.quiz import Answer, Question, Quiz
 from app.repositories.base import BaseRepository
 
@@ -15,6 +16,19 @@ class QuizRepository(BaseRepository[Quiz]):
 
     async def get_by_module(self, module_id: UUID) -> Quiz | None:
         return await self.session.scalar(select(Quiz).where(Quiz.module_id == module_id))
+
+    async def get_with_course(self, quiz_id: UUID) -> Quiz | None:
+        """Load a quiz together with its module and course.
+
+        Authorisation for /quizzes/{id}/... has to walk back up to
+        courses.created_by, so the chain is fetched in one query.
+        """
+        stmt = (
+            select(Quiz)
+            .where(Quiz.id == quiz_id)
+            .options(joinedload(Quiz.module).joinedload(Module.course))
+        )
+        return await self.session.scalar(stmt)
 
     async def get_with_questions(self, quiz_id: UUID) -> Quiz | None:
         """Load the quiz, its questions and their answers.
@@ -42,6 +56,19 @@ class QuestionRepository(BaseRepository[Question]):
         )
         return (await self.session.scalars(stmt)).all()
 
+    async def get_with_course(self, question_id: UUID) -> Question | None:
+        stmt = (
+            select(Question)
+            .where(Question.id == question_id)
+            .options(
+                joinedload(Question.quiz)
+                .joinedload(Quiz.module)
+                .joinedload(Module.course),
+                selectinload(Question.answers),
+            )
+        )
+        return await self.session.scalar(stmt)
+
     async def get_in_quiz(self, question_id: UUID, quiz_id: UUID) -> Question | None:
         stmt = select(Question).where(Question.id == question_id, Question.quiz_id == quiz_id)
         return await self.session.scalar(stmt)
@@ -61,6 +88,19 @@ class AnswerRepository(BaseRepository[Answer]):
             .order_by(Answer.display_order)
         )
         return (await self.session.scalars(stmt)).all()
+
+    async def get_with_course(self, answer_id: UUID) -> Answer | None:
+        stmt = (
+            select(Answer)
+            .where(Answer.id == answer_id)
+            .options(
+                joinedload(Answer.question)
+                .joinedload(Question.quiz)
+                .joinedload(Quiz.module)
+                .joinedload(Module.course)
+            )
+        )
+        return await self.session.scalar(stmt)
 
     async def get_in_question(self, answer_id: UUID, question_id: UUID) -> Answer | None:
         """Rejects an answer id that belongs to a different question."""

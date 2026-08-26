@@ -40,6 +40,11 @@ TypeScript) + Vite + React Router + TanStack Query + Tailwind. Components are
   rather than bare `HTTPException`.
 - Endpoints stay thin: validation in `schemas/`, rules in `services/`, queries in
   `repositories/`. Repositories hold no business rules.
+- Role-dependent reads (author vs learner shape) use `response_model=None` and return
+  the model the endpoint built. A union response_model lets pydantic's smart union
+  pick the "best" member, which silently drops fields such as `isCorrect`.
+- Reordering renumbers in two passes with a flush between them; sibling
+  `display_order` is unique per parent, so one pass would collide.
 - Ownership and user filtering are enforced in the query/service layer, never in the client.
 - Repositories stage writes; the service layer commits, so one operation is one transaction.
 - New models must be imported in `app/models/__init__.py` for Alembic autogenerate.
