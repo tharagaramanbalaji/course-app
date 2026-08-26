@@ -1,17 +1,77 @@
 import axios from "axios";
 
+const ACCESS_TOKEN_KEY = "courseapp.accessToken";
+const REFRESH_TOKEN_KEY = "courseapp.refreshToken";
+
+export const tokenStore = {
+  get access() {
+    return localStorage.getItem(ACCESS_TOKEN_KEY);
+  },
+  get refresh() {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  },
+  save({ accessToken, refreshToken }) {
+    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+    if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  },
+  clear() {
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
+};
+
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api/v1",
   headers: { "Content-Type": "application/json" },
 });
 
+api.interceptors.request.use((config) => {
+  const token = tokenStore.access;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 /**
- * Every backend error uses the envelope:
- *   { error: { code, message, details } }
- *
- * @param {unknown} error
- * @returns {string} a message safe to show the user
+ * On a 401, try the refresh token once and replay the original request.
+ * `_retried` stops a failed refresh from looping.
  */
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    const isAuthCall = original?.url?.startsWith("/auth/");
+
+    if (error.response?.status !== 401 || isAuthCall || original?._retried) {
+      return Promise.reject(error);
+    }
+
+    const refreshToken = tokenStore.refresh;
+    if (!refreshToken) return Promise.reject(error);
+
+    try {
+      const { data } = await axios.post(
+        `${api.defaults.baseURL}/auth/refresh`,
+        { refreshToken },
+        { headers: { "Content-Type": "application/json" } },
+      );
+      tokenStore.save({ accessToken: data.data.accessToken });
+      original._retried = true;
+      return api(original);
+    } catch (refreshError) {
+      tokenStore.clear();
+      return Promise.reject(refreshError);
+    }
+  },
+);
+
+/** Every backend error uses `{ error: { code, message, details } }`. */
 export function getApiErrorMessage(error) {
-  return error?.response?.data?.error?.message ?? "Something went wrong. Please try again.";
+  return (
+    error?.response?.data?.error?.message ?? "Something went wrong. Please try again."
+  );
+}
+
+/** Publication failures carry a list of reasons in `details.problems`. */
+export function getApiErrorProblems(error) {
+  return error?.response?.data?.error?.details?.problems ?? [];
 }

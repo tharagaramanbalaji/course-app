@@ -1,16 +1,31 @@
 import { createBrowserRouter } from "react-router-dom";
 
+import ProtectedRoute from "@/components/ProtectedRoute";
 import RootLayout from "@/components/RootLayout";
-import HomePage from "@/pages/HomePage";
+import CoursesPage from "@/pages/CoursesPage";
+import DashboardPage from "@/pages/DashboardPage";
+import LoginPage from "@/pages/LoginPage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import UsersPage from "@/pages/UsersPage";
 
-// Feature routes (auth, catalogue, learner, admin) are added here as they land.
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <HomePage /> },
+      { path: "login", element: <LoginPage /> },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          { index: true, element: <DashboardPage /> },
+          { path: "courses", element: <CoursesPage /> },
+        ],
+      },
+      {
+        // Role is enforced by the backend too; this only hides the page.
+        element: <ProtectedRoute roles={["ADMIN"]} />,
+        children: [{ path: "users", element: <UsersPage /> }],
+      },
       { path: "*", element: <NotFoundPage /> },
     ],
   },

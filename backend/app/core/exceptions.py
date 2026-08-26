@@ -28,7 +28,7 @@ class AppError(Exception):
 
 class NotFoundError(AppError):
     status_code = status.HTTP_404_NOT_FOUND
-    code = "NOT_FOUND"
+    code = "RESOURCE_NOT_FOUND"
 
 
 class ConflictError(AppError):

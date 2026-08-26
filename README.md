@@ -56,6 +56,18 @@ Then apply the schema:
 cd backend && .venv/Scripts/python -m alembic upgrade head
 ```
 
+Create one user per role, for signing in during development:
+
+```bash
+cd backend && .venv/Scripts/python scripts/seed.py
+```
+
+| Email | Password | Role |
+|---|---|---|
+| admin@example.com | Admin123! | ADMIN |
+| instructor@example.com | Teach123! | INSTRUCTOR |
+| learner@example.com | Learn123! | USER |
+
 Once the backend is running, http://localhost:8000/api/v1/health/db confirms the
 connection.
 

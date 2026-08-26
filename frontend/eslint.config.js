@@ -30,6 +30,9 @@ export default [
       ...react.configs.flat["jsx-runtime"].rules,
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // This is a plain-JavaScript project with no prop-types dependency;
+      // component contracts are documented rather than validated at runtime.
+      "react/prop-types": "off",
     },
   },
   {

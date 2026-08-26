@@ -7,13 +7,14 @@ a caller that asks for a course it does not own gets nothing back.
 from collections.abc import Sequence
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.models.content import Content
 from app.models.course import Course
 from app.models.enums import CourseStatus
 from app.models.module import Module
+from app.models.quiz import Question, Quiz
 from app.repositories.base import BaseRepository
 
 
@@ -33,6 +34,21 @@ class CourseRepository(BaseRepository[Course]):
             .options(
                 selectinload(Course.modules).selectinload(Module.contents),
                 selectinload(Course.modules).selectinload(Module.quiz),
+            )
+        )
+        return await self.session.scalar(stmt)
+
+    async def get_for_publication(self, course_id: UUID, owner_id: UUID) -> Course | None:
+        """The whole course tree, owner-scoped, for publication validation."""
+        stmt = (
+            select(Course)
+            .where(Course.id == course_id, Course.created_by == owner_id)
+            .options(
+                selectinload(Course.modules).selectinload(Module.contents),
+                selectinload(Course.modules)
+                .selectinload(Module.quiz)
+                .selectinload(Quiz.questions)
+                .selectinload(Question.answers),
             )
         )
         return await self.session.scalar(stmt)
@@ -61,6 +77,50 @@ class CourseRepository(BaseRepository[Course]):
         if self_enrollable_only:
             stmt = stmt.where(Course.allow_self_enrollment.is_(True))
         return (await self.session.scalars(stmt.order_by(Course.title))).all()
+
+
+    async def list_page(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        owner_id: UUID | None = None,
+        statuses: list[CourseStatus] | None = None,
+        search: str | None = None,
+        category: str | None = None,
+    ) -> tuple[Sequence[Course], int]:
+        """One page of courses plus the unpaginated total.
+
+        ``owner_id`` scopes the query to an author's own courses; leaving it
+        out with ``statuses=[PUBLISHED]`` gives the learner catalogue.
+        """
+        filters = []
+        if owner_id is not None:
+            filters.append(Course.created_by == owner_id)
+        if statuses:
+            filters.append(Course.status.in_(statuses))
+        if category:
+            filters.append(Course.category == category)
+        if search:
+            pattern = f"%{search.strip().lower()}%"
+            filters.append(
+                or_(
+                    func.lower(Course.title).like(pattern),
+                    func.lower(Course.description).like(pattern),
+                )
+            )
+
+        total = await self.session.scalar(
+            select(func.count()).select_from(Course).where(*filters)
+        )
+        rows = await self.session.scalars(
+            select(Course)
+            .where(*filters)
+            .order_by(Course.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return rows.all(), total or 0
 
 
 class ModuleRepository(BaseRepository[Module]):

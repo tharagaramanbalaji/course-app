@@ -8,6 +8,7 @@ from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import hash_password
 from app.models import (
     Answer,
     Content,
@@ -21,8 +22,13 @@ from app.models import (
     Quiz,
     User,
     UserRole,
+    UserStatus,
 )
 from app.repositories.user import normalize_email
+
+DEFAULT_PASSWORD = "Password123!"
+# bcrypt is deliberately slow, so the common case is hashed once per session.
+_DEFAULT_PASSWORD_HASH = hash_password(DEFAULT_PASSWORD)
 
 
 async def make_user(
@@ -30,13 +36,18 @@ async def make_user(
     *,
     email: str = "learner@example.com",
     role: UserRole = UserRole.USER,
+    password: str = DEFAULT_PASSWORD,
+    status: UserStatus = UserStatus.ACTIVE,
 ) -> User:
     user = User(
         first_name="Test",
         last_name="User",
         email=normalize_email(email),
-        password_hash="not-a-real-hash",
+        password_hash=(
+            _DEFAULT_PASSWORD_HASH if password == DEFAULT_PASSWORD else hash_password(password)
+        ),
         role=role,
+        status=status,
     )
     session.add(user)
     await session.flush()
@@ -161,3 +172,12 @@ async def make_enrollment(
     session.add(enrollment)
     await session.flush()
     return enrollment
+
+
+async def auth_headers(client, email: str, password: str = DEFAULT_PASSWORD) -> dict[str, str]:
+    """Log in over HTTP and return the Authorization header for that user."""
+    response = await client.post(
+        "/api/v1/auth/login", json={"email": email, "password": password}
+    )
+    assert response.status_code == 200, response.text
+    return {"Authorization": f"Bearer {response.json()['data']['accessToken']}"}
