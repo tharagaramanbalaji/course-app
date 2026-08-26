@@ -39,20 +39,25 @@ course-app/
 
 ### 1. Database
 
-PostgreSQL 18 is already installed locally (`C:\Program Files\PostgreSQL\18`)
-and listening on port 5432, but the `courseapp` role does not exist yet.
-Create it once, using your `postgres` superuser password:
+The backend expects a `courseapp` role and a database of the same name on
+PostgreSQL 16 or later. Create them once, using your `postgres` superuser
+password (on Windows, PostgreSQL 18 installs to `C:\Program Files\PostgreSQL\18`):
 
 ```bash
 "/c/Program Files/PostgreSQL/18/bin/psql.exe" -U postgres -c "CREATE ROLE courseapp LOGIN PASSWORD 'courseapp' CREATEDB;" -c "CREATE DATABASE courseapp OWNER courseapp;"
 ```
 
-Docker is not installed on this machine. If you would rather use the bundled
-container (Postgres 16), install Docker Desktop and run `docker compose up -d`
-instead - the credentials in `docker-compose.yml` match `backend/.env.example`.
+If you have Docker, `docker compose up -d` starts the bundled PostgreSQL 16
+container instead; its credentials already match `backend/.env.example`.
 
-Verify the connection at http://localhost:8000/api/v1/health/db once the backend
-is running.
+Then apply the schema:
+
+```bash
+cd backend && .venv/Scripts/python -m alembic upgrade head
+```
+
+Once the backend is running, http://localhost:8000/api/v1/health/db confirms the
+connection.
 
 ### 2. Backend
 
