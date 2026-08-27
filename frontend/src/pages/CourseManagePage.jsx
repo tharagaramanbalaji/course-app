@@ -5,8 +5,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, getApiErrorMessage, getApiErrorProblems } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
 import ErrorNote from "@/components/ErrorNote";
+import LearnerPreviewModal from "@/components/LearnerPreviewModal";
 import ModuleQuizPanel from "@/components/ModuleQuizPanel";
+import StructuredAddModuleModal from "@/components/StructuredAddModuleModal";
+import VideoPlayer from "@/components/VideoPlayer";
 import VideoUrlInput from "@/components/VideoUrlInput";
+import { parseVideoUrl } from "@/lib/video";
 
 const STATUS_STYLES = {
   DRAFT: "bg-amber-100 text-amber-800",
@@ -31,6 +35,9 @@ export default function CourseManagePage() {
     category: "",
     allowSelfEnrollment: false,
   });
+
+  // Learner Preview state
+  const [showLearnerPreview, setShowLearnerPreview] = useState(false);
 
   // Module creation/edit state
   const [showAddModule, setShowAddModule] = useState(false);
@@ -331,6 +338,15 @@ export default function CourseManagePage() {
 
               {isAuthor && isDraft && (
                 <div className="flex flex-wrap gap-2">
+                  {/* Learner Preview Action */}
+                  <button
+                    type="button"
+                    onClick={() => setShowLearnerPreview(true)}
+                    className="rounded bg-indigo-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition flex items-center gap-1.5"
+                  >
+                    👁️ Learner Preview
+                  </button>
+
                   <button
                     type="button"
                     onClick={startEditCourse}
@@ -365,6 +381,14 @@ export default function CourseManagePage() {
         )}
       </div>
 
+      {/* Learner Preview Modal */}
+      <LearnerPreviewModal
+        isOpen={showLearnerPreview}
+        onClose={() => setShowLearnerPreview(false)}
+        course={course}
+        modules={modules}
+      />
+
       {/* Modules & Content Section */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">
@@ -375,7 +399,7 @@ export default function CourseManagePage() {
             </p>
           </div>
 
-          {isAuthor && isDraft && !showAddModule && (
+          {isAuthor && isDraft && (
             <button
               type="button"
               onClick={() => {
@@ -384,57 +408,23 @@ export default function CourseManagePage() {
               }}
               className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
             >
-              + Add Module
+              + Add Module (Structured)
             </button>
           )}
         </div>
 
-        {/* Add Module Form */}
-        {showAddModule && (
-          <form
-            onSubmit={handleCreateModule}
-            className="space-y-3 rounded-lg border border-slate-300 bg-slate-50 p-4"
-          >
-            <h3 className="font-medium text-slate-900">New Module</h3>
-            <div className="grid gap-3 sm:grid-cols-1">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Module Title</span>
-                <input
-                  required
-                  placeholder="e.g. Module 1: Getting Started"
-                  value={moduleForm.title}
-                  onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm bg-white"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Description (Optional)</span>
-                <input
-                  placeholder="Brief overview of what will be learned in this module"
-                  value={moduleForm.description}
-                  onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
-                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm bg-white"
-                />
-              </label>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button
-                type="submit"
-                disabled={createModule.isPending}
-                className="rounded bg-slate-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-              >
-                {createModule.isPending ? "Adding..." : "Save Module"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddModule(false)}
-                className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-white"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
+        {/* Structured Add Module Modal */}
+        <StructuredAddModuleModal
+          isOpen={showAddModule}
+          onClose={() => setShowAddModule(false)}
+          courseId={courseId}
+          onSuccess={() => {
+            clearError();
+            refreshModules();
+          }}
+          reportError={reportError}
+          clearError={clearError}
+        />
 
         {/* Module List */}
         {modulesQuery.isPending && (
@@ -906,9 +896,7 @@ function ModuleCard({
                           {item.contentBody}
                         </p>
                       ) : (
-                        <p className="text-xs text-slate-600 pl-2 border-l-2 border-slate-200">
-                          URL: <a href={item.videoUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{item.videoUrl}</a>
-                        </p>
+                        <VideoLessonPreview item={item} />
                       )}
                     </div>
 
@@ -973,6 +961,57 @@ function ModuleCard({
           <ModuleQuizPanel courseId={courseId} module={module} editable={isDraft} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function VideoLessonPreview({ item }) {
+  const [showPreview, setShowPreview] = useState(false);
+  const videoObj = item.video || parseVideoUrl(item.videoUrl);
+
+  return (
+    <div className="space-y-2 pl-2 border-l-2 border-slate-200">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs text-slate-600">
+          URL:{" "}
+          <a
+            href={item.videoUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-600 underline"
+          >
+            {item.videoUrl}
+          </a>
+        </p>
+
+        {videoObj && (
+          <button
+            type="button"
+            onClick={() => setShowPreview(!showPreview)}
+            className="inline-flex items-center gap-1 rounded bg-slate-100 border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-200 transition"
+          >
+            ▶ {showPreview ? "Hide Preview" : "Mini Preview"}
+          </button>
+        )}
+      </div>
+
+      {showPreview && videoObj && (
+        <div className="mt-2 max-w-lg rounded-lg border border-slate-200 bg-slate-900 p-2.5 shadow-md">
+          <div className="flex items-center justify-between pb-2 px-1">
+            <span className="text-[11px] font-semibold text-slate-300">
+              Mini Video Preview ({videoObj.provider})
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPreview(false)}
+              className="text-[11px] font-bold text-slate-400 hover:text-white"
+            >
+              ✕ Close
+            </button>
+          </div>
+          <VideoPlayer video={videoObj} title={item.title} />
+        </div>
+      )}
     </div>
   );
 }
