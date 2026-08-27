@@ -6,10 +6,10 @@ import { api, getApiErrorMessage } from "@/api/client";
 import ErrorNote from "@/components/ErrorNote";
 
 const STATUS_STYLES = {
-  ASSIGNED: "bg-sky-100 text-sky-800",
-  STARTED: "bg-amber-100 text-amber-800",
-  COMPLETED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-slate-200 text-slate-600",
+  ASSIGNED: "badge bg-sky-100 text-sky-800",
+  STARTED: "badge-amber",
+  COMPLETED: "badge-brand",
+  CANCELLED: "badge-slate",
 };
 
 function formatDate(value) {
@@ -94,13 +94,13 @@ export default function CourseAssignmentsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link to="/courses" className="text-sm text-slate-500 hover:underline">
-          ← Back to courses
+        <Link to="/courses" className="text-sm font-semibold text-[#0A6847] hover:underline">
+          &larr; Back to courses
         </Link>
-        <h2 className="mt-1 text-xl font-medium">
+        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-900">
           Assignments{course ? ` · ${course.title}` : ""}
-        </h2>
-        <p className="mt-1 text-sm text-slate-600">
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
           Assigning a course also enrolls the learner, in the same transaction.
         </p>
       </div>
@@ -109,9 +109,9 @@ export default function CourseAssignmentsPage() {
       {courseQuery.isError && <ErrorNote message={getApiErrorMessage(courseQuery.error)} />}
 
       {course && !isPublished && (
-        <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           This course is {course.status}. Only a published course can be assigned —{" "}
-          <Link to={`/courses/${courseId}/manage`} className="underline">
+          <Link to={`/courses/${courseId}/manage`} className="font-semibold underline">
             publish it first
           </Link>
           .
@@ -119,17 +119,14 @@ export default function CourseAssignmentsPage() {
       )}
 
       {isPublished && (
-        <form
-          onSubmit={handleAssign}
-          className="flex flex-wrap items-end gap-3 rounded border border-slate-200 bg-white p-4"
-        >
+        <form onSubmit={handleAssign} className="card flex flex-wrap items-end gap-3">
           <label className="min-w-0 flex-1 text-sm">
-            <span className="font-medium">Learner</span>
+            <span className="label-field">Learner</span>
             <select
               required
               value={userId}
               onChange={(event) => setUserId(event.target.value)}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="input-field mt-1.5"
             >
               <option value="">Select a learner…</option>
               {available.map((person) => (
@@ -141,19 +138,19 @@ export default function CourseAssignmentsPage() {
           </label>
 
           <label className="text-sm">
-            <span className="font-medium">Due date</span>
+            <span className="label-field">Due date</span>
             <input
               type="date"
               value={dueDate}
               onChange={(event) => setDueDate(event.target.value)}
-              className="mt-1 rounded border border-slate-300 px-3 py-2"
+              className="input-field mt-1.5"
             />
           </label>
 
           <button
             type="submit"
             disabled={assign.isPending || available.length === 0}
-            className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+            className="btn-primary"
           >
             {assign.isPending ? "Assigning..." : "Assign course"}
           </button>
@@ -172,21 +169,21 @@ export default function CourseAssignmentsPage() {
       )}
 
       {assignmentsQuery.isSuccess && assignments.length === 0 && (
-        <p className="rounded border border-dashed border-slate-300 p-6 text-center text-slate-500">
+        <p className="card border-dashed text-center text-slate-500">
           Nobody is assigned to this course yet.
         </p>
       )}
 
       {assignments.length > 0 && (
-        <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+        <div className="card-flush overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">Learner</th>
-                <th className="px-4 py-2 font-medium">Assigned</th>
-                <th className="px-4 py-2 font-medium">Due</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2" />
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Learner</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Assigned</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Due</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Status</th>
+                <th className="px-4 py-2.5" />
               </tr>
             </thead>
             <tbody>
@@ -194,30 +191,26 @@ export default function CourseAssignmentsPage() {
                 const person = nameById.get(assignment.userId);
                 return (
                   <tr key={assignment.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-2.5">
                       {person?.name ?? "Unknown"}
                       <span className="block font-mono text-xs text-slate-500">
                         {person?.email ?? assignment.userId}
                       </span>
                     </td>
-                    <td className="px-4 py-2">{formatDate(assignment.assignedAt)}</td>
-                    <td className="px-4 py-2">{formatDate(assignment.dueDate)}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`rounded px-2 py-0.5 text-xs font-medium ${
-                          STATUS_STYLES[assignment.status]
-                        }`}
-                      >
+                    <td className="px-4 py-2.5">{formatDate(assignment.assignedAt)}</td>
+                    <td className="px-4 py-2.5">{formatDate(assignment.dueDate)}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={STATUS_STYLES[assignment.status]}>
                         {assignment.status}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       {assignment.status !== "CANCELLED" &&
                         assignment.status !== "COMPLETED" && (
                           <button
                             type="button"
                             onClick={() => cancel.mutate(assignment.id)}
-                            className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+                            className="btn-danger-sm"
                           >
                             Cancel
                           </button>

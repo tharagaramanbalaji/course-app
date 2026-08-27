@@ -539,7 +539,7 @@ export default function StructuredAddModuleModal({
                       placeholder="e.g. Module 1: Core Principles"
                       value={moduleForm.title}
                       onChange={(e) => setModuleForm({ ...moduleForm, title: e.target.value })}
-                      className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                      className="input-field mt-1"
                     />
                   </label>
 
@@ -552,7 +552,7 @@ export default function StructuredAddModuleModal({
                       placeholder="Summary of what learners will master in this module..."
                       value={moduleForm.description}
                       onChange={(e) => setModuleForm({ ...moduleForm, description: e.target.value })}
-                      className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                      className="input-field mt-1"
                     />
                   </label>
                 </div>
@@ -573,7 +573,7 @@ export default function StructuredAddModuleModal({
                   <button
                     type="button"
                     onClick={handleAddLesson}
-                    className="rounded bg-slate-100 border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-200"
+                    className="rounded-lg border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] hover:text-[#0A6847]"
                   >
                     + Add Lesson
                   </button>
@@ -639,7 +639,7 @@ export default function StructuredAddModuleModal({
                               onChange={(e) =>
                                 handleUpdateLesson(index, "title", e.target.value)
                               }
-                              className="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+                              className="input-field mt-1"
                             />
                           </label>
 
@@ -650,7 +650,7 @@ export default function StructuredAddModuleModal({
                               onChange={(e) =>
                                 handleUpdateLesson(index, "contentType", e.target.value)
                               }
-                              className="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+                              className="input-field mt-1"
                             >
                               <option value="TEXT">Text Lesson</option>
                               <option value="VIDEO">Video Lesson</option>
@@ -670,7 +670,7 @@ export default function StructuredAddModuleModal({
                               onChange={(e) =>
                                 handleUpdateLesson(index, "contentBody", e.target.value)
                               }
-                              className="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+                              className="input-field mt-1"
                             />
                           </label>
                         ) : (
@@ -698,7 +698,7 @@ export default function StructuredAddModuleModal({
                     </p>
                   </div>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-800 bg-slate-100 px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-200">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-800 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] hover:text-[#0A6847]">
                     <input
                       type="checkbox"
                       checked={hasQuiz}
@@ -719,7 +719,7 @@ export default function StructuredAddModuleModal({
                           required
                           value={quizForm.title}
                           onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
-                          className="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+                          className="input-field mt-1"
                         />
                       </label>
 
@@ -733,7 +733,7 @@ export default function StructuredAddModuleModal({
                           onChange={(e) =>
                             setQuizForm({ ...quizForm, passingScore: e.target.value })
                           }
-                          className="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+                          className="input-field mt-1"
                         />
                       </label>
 
@@ -746,7 +746,7 @@ export default function StructuredAddModuleModal({
                           onChange={(e) =>
                             setQuizForm({ ...quizForm, maxAttempts: e.target.value })
                           }
-                          className="mt-1 w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+                          className="input-field mt-1"
                         />
                       </label>
                     </div>
@@ -772,7 +772,7 @@ export default function StructuredAddModuleModal({
                         <button
                           type="button"
                           onClick={handleAddQuestion}
-                          className="rounded bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800"
+                          className="btn-primary-sm"
                         >
                           + Add Question
                         </button>
@@ -814,7 +814,7 @@ export default function StructuredAddModuleModal({
                                     onChange={(e) =>
                                       handleUpdateQuestion(qIdx, "questionText", e.target.value)
                                     }
-                                    className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1 text-xs"
+                                    className="input-field mt-1 text-xs"
                                   />
                                 </label>
 
@@ -827,7 +827,7 @@ export default function StructuredAddModuleModal({
                                     onChange={(e) =>
                                       handleUpdateQuestion(qIdx, "points", e.target.value)
                                     }
-                                    className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1 text-xs"
+                                    className="input-field mt-1 text-xs"
                                   />
                                 </label>
                               </div>
@@ -865,7 +865,7 @@ export default function StructuredAddModuleModal({
                                       onChange={(e) =>
                                         handleUpdateAnswer(qIdx, aIdx, "answerText", e.target.value)
                                       }
-                                      className="flex-1 rounded border border-slate-300 px-2 py-1 text-xs"
+                                      className="input-field flex-1 text-xs"
                                     />
                                     {a.isCorrect ? (
                                       <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
@@ -920,7 +920,7 @@ export default function StructuredAddModuleModal({
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="rounded bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800 transition flex items-center gap-1.5"
+                      className="btn-primary-sm"
                     >
                       📁 Choose JSON File
                     </button>
@@ -946,7 +946,7 @@ export default function StructuredAddModuleModal({
                     setJsonText(e.target.value);
                     setJsonError("");
                   }}
-                  className="w-full font-mono text-xs rounded border border-slate-300 p-3 bg-slate-900 text-slate-100 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 bg-slate-900 p-3 font-mono text-xs text-slate-100 focus:outline-none"
                 />
               </div>
 
@@ -960,7 +960,7 @@ export default function StructuredAddModuleModal({
                 <button
                   type="button"
                   onClick={handleApplyJson}
-                  className="rounded bg-slate-900 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                  className="btn-primary-sm"
                 >
                   Apply JSON to Visual Builder
                 </button>
@@ -980,7 +980,7 @@ export default function StructuredAddModuleModal({
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
+              className="btn-secondary"
             >
               Cancel
             </button>
@@ -988,7 +988,7 @@ export default function StructuredAddModuleModal({
               type="submit"
               form="structured-module-form"
               disabled={isSubmitting || !moduleForm.title.trim()}
-              className="rounded bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
+              className="btn-primary"
             >
               {isSubmitting ? (
                 <>

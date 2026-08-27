@@ -9,7 +9,7 @@ import { PROVIDER_LABELS } from "@/lib/video";
 export default function VideoPlayer({ video, title = "Video", className = "" }) {
   if (!video) return null;
 
-  const frame = "aspect-video w-full rounded border border-slate-200 bg-black";
+  const frame = "aspect-video w-full rounded-xl border border-slate-200 bg-black";
 
   if (video.provider === "FILE") {
     return (

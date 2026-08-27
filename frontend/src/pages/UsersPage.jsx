@@ -69,68 +69,65 @@ export default function UsersPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-medium">Users</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Users</h1>
+        <p className="mt-1 text-sm text-slate-500">
           Admin only. Passwords are hashed by the backend and never returned.
         </p>
       </div>
 
       <ErrorNote message={error} />
 
-      <form
-        onSubmit={handleCreate}
-        className="space-y-3 rounded border border-slate-200 bg-white p-4"
-      >
-        <h3 className="font-medium">New user</h3>
+      <form onSubmit={handleCreate} className="card space-y-4">
+        <h3 className="font-bold text-slate-900">New user</h3>
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-medium">First name</span>
+            <span className="label-field">First name</span>
             <input
               required
               value={form.firstName}
               onChange={(event) => setForm({ ...form, firstName: event.target.value })}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="input-field mt-1.5"
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium">Last name</span>
+            <span className="label-field">Last name</span>
             <input
               required
               value={form.lastName}
               onChange={(event) => setForm({ ...form, lastName: event.target.value })}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="input-field mt-1.5"
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium">Email</span>
+            <span className="label-field">Email</span>
             <input
               type="email"
               required
               value={form.email}
               onChange={(event) => setForm({ ...form, email: event.target.value })}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="input-field mt-1.5"
             />
           </label>
           <label className="block">
-            <span className="text-sm font-medium">Password</span>
+            <span className="label-field">Password</span>
             <input
               type="password"
               required
               minLength={8}
               value={form.password}
               onChange={(event) => setForm({ ...form, password: event.target.value })}
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+              className="input-field mt-1.5"
             />
           </label>
         </div>
 
         <label className="block max-w-xs">
-          <span className="text-sm font-medium">Role</span>
+          <span className="label-field">Role</span>
           <select
             value={form.role}
             onChange={(event) => setForm({ ...form, role: event.target.value })}
-            className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+            className="input-field mt-1.5"
           >
             {ROLES.map((role) => (
               <option key={role} value={role}>
@@ -140,22 +137,18 @@ export default function UsersPage() {
           </select>
         </label>
 
-        <button
-          type="submit"
-          disabled={createUser.isPending}
-          className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
+        <button type="submit" disabled={createUser.isPending} className="btn-primary">
           {createUser.isPending ? "Creating..." : "Create user"}
         </button>
       </form>
 
       <label className="block max-w-sm">
-        <span className="text-sm font-medium">Search</span>
+        <span className="label-field">Search</span>
         <input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Name or email"
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+          className="input-field mt-1.5"
         />
       </label>
 
@@ -163,30 +156,30 @@ export default function UsersPage() {
       {usersQuery.isError && <ErrorNote message={getApiErrorMessage(usersQuery.error)} />}
 
       {usersQuery.isSuccess && (
-        <div className="overflow-x-auto rounded border border-slate-200 bg-white">
+        <div className="card-flush overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-left">
+            <thead className="border-b border-slate-100 bg-slate-50/70 text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2 font-medium">Role</th>
-                <th className="px-4 py-2 font-medium">Status</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Name</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Email</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Role</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600">Status</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
                 <tr key={user.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2.5 font-medium text-slate-900">
                     {user.firstName} {user.lastName}
                   </td>
-                  <td className="px-4 py-2 font-mono text-xs">{user.email}</td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2.5 font-mono text-xs">{user.email}</td>
+                  <td className="px-4 py-2.5">
                     <select
                       value={user.role}
                       onChange={(event) =>
                         changeRole.mutate({ id: user.id, role: event.target.value })
                       }
-                      className="rounded border border-slate-300 px-2 py-1"
+                      className="rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-[#0A6847] focus:outline-none focus:ring-2 focus:ring-[#0A6847]/20"
                     >
                       {ROLES.map((role) => (
                         <option key={role} value={role}>
@@ -195,7 +188,7 @@ export default function UsersPage() {
                       ))}
                     </select>
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2.5">
                     <button
                       type="button"
                       onClick={() =>
@@ -204,11 +197,7 @@ export default function UsersPage() {
                           status: user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
                         })
                       }
-                      className={`rounded px-2 py-1 text-xs font-medium ${
-                        user.status === "ACTIVE"
-                          ? "bg-green-100 text-green-800"
-                          : "bg-slate-200 text-slate-700"
-                      }`}
+                      className={user.status === "ACTIVE" ? "badge-brand" : "badge-slate"}
                     >
                       {user.status}
                     </button>

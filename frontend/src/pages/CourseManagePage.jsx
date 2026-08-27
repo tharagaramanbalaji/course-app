@@ -13,9 +13,9 @@ import VideoUrlInput from "@/components/VideoUrlInput";
 import { parseVideoUrl } from "@/lib/video";
 
 const STATUS_STYLES = {
-  DRAFT: "bg-amber-100 text-amber-800",
-  PUBLISHED: "bg-green-100 text-green-800",
-  ARCHIVED: "bg-slate-200 text-slate-700",
+  DRAFT: "badge-amber",
+  PUBLISHED: "badge-brand",
+  ARCHIVED: "badge-slate",
 };
 
 export default function CourseManagePage() {
@@ -239,11 +239,7 @@ export default function CourseManagePage() {
         >
           &larr; Back to Courses
         </Link>
-        <span
-          className={`rounded px-2.5 py-1 text-xs font-semibold uppercase tracking-wide ${
-            STATUS_STYLES[course.status]
-          }`}
-        >
+        <span className={`${STATUS_STYLES[course.status]} uppercase tracking-wide`}>
           {course.status}
         </span>
       </div>
@@ -251,7 +247,7 @@ export default function CourseManagePage() {
       <ErrorNote message={error} problems={problems} />
 
       {/* Course Detail / Editor Header */}
-      <div className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="card">
         {isEditingCourse ? (
           <form onSubmit={handleUpdateCourse} className="space-y-4">
             <h3 className="text-lg font-medium">Edit Course Details</h3>
@@ -262,7 +258,7 @@ export default function CourseManagePage() {
                   required
                   value={courseForm.title}
                   onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
-                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className="input-field mt-1"
                 />
               </label>
               <label className="block">
@@ -270,7 +266,7 @@ export default function CourseManagePage() {
                 <input
                   value={courseForm.category}
                   onChange={(e) => setCourseForm({ ...courseForm, category: e.target.value })}
-                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                  className="input-field mt-1"
                 />
               </label>
             </div>
@@ -284,7 +280,7 @@ export default function CourseManagePage() {
                 onChange={(e) =>
                   setCourseForm({ ...courseForm, description: e.target.value })
                 }
-                className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+                className="input-field mt-1"
               />
             </label>
 
@@ -304,14 +300,14 @@ export default function CourseManagePage() {
               <button
                 type="submit"
                 disabled={updateCourse.isPending}
-                className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="btn-primary"
               >
                 {updateCourse.isPending ? "Saving..." : "Save Changes"}
               </button>
               <button
                 type="button"
                 onClick={() => setIsEditingCourse(false)}
-                className="rounded border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                className="btn-secondary"
               >
                 Cancel
               </button>
@@ -342,7 +338,7 @@ export default function CourseManagePage() {
                   <button
                     type="button"
                     onClick={() => setShowLearnerPreview(true)}
-                    className="rounded bg-indigo-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 transition flex items-center gap-1.5"
+                    className="flex items-center gap-1.5 rounded-xl bg-[#7ABA78] px-3.5 py-1.5 text-sm font-semibold text-[#063F2A] transition hover:bg-[#5C9E5A] hover:text-white"
                   >
                     👁️ Learner Preview
                   </button>
@@ -350,7 +346,7 @@ export default function CourseManagePage() {
                   <button
                     type="button"
                     onClick={startEditCourse}
-                    className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                    className="btn-secondary"
                   >
                     Edit Details
                   </button>
@@ -358,7 +354,7 @@ export default function CourseManagePage() {
                     type="button"
                     onClick={() => publishCourse.mutate()}
                     disabled={publishCourse.isPending}
-                    className="rounded bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                    className="btn-primary"
                   >
                     {publishCourse.isPending ? "Validating & Publishing..." : "Publish Course"}
                   </button>
@@ -370,7 +366,7 @@ export default function CourseManagePage() {
                       }
                     }}
                     disabled={deleteCourse.isPending}
-                    className="rounded border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    className="btn-danger"
                   >
                     Delete Course
                   </button>
@@ -393,7 +389,7 @@ export default function CourseManagePage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">Course Modules & Lessons</h2>
+            <h2 className="text-xl font-bold text-slate-900">Course Modules & Lessons</h2>
             <p className="text-sm text-slate-600">
               Modules are sequential chapters. Each module can contain text & video training content.
             </p>
@@ -406,7 +402,7 @@ export default function CourseManagePage() {
                 setShowAddModule(true);
                 clearError();
               }}
-              className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+              className="btn-primary"
             >
               + Add Module (Structured)
             </button>
@@ -613,7 +609,7 @@ function ModuleCard({
               onChange={(e) =>
                 setEditModuleForm({ ...editModuleForm, title: e.target.value })
               }
-              className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+              className="input-field"
             />
             <input
               placeholder="Description"
@@ -621,19 +617,19 @@ function ModuleCard({
               onChange={(e) =>
                 setEditModuleForm({ ...editModuleForm, description: e.target.value })
               }
-              className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm bg-white"
+              className="input-field"
             />
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="rounded bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800"
+                className="btn-primary-sm"
               >
                 Save
               </button>
               <button
                 type="button"
                 onClick={() => setEditingModuleId(null)}
-                className="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-white"
+                className="btn-secondary-sm"
               >
                 Cancel
               </button>
@@ -660,7 +656,7 @@ function ModuleCard({
                   type="button"
                   disabled={index === 0}
                   onClick={() => handleMoveModule(index, -1)}
-                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
                   title="Move Module Up"
                 >
                   &uarr;
@@ -669,7 +665,7 @@ function ModuleCard({
                   type="button"
                   disabled={index === totalModules - 1}
                   onClick={() => handleMoveModule(index, 1)}
-                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 disabled:opacity-30"
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
                   title="Move Module Down"
                 >
                   &darr;
@@ -684,7 +680,7 @@ function ModuleCard({
                     });
                     clearError();
                   }}
-                  className="ml-2 rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  className="ml-2 btn-secondary-sm"
                 >
                   Edit
                 </button>
@@ -695,7 +691,7 @@ function ModuleCard({
                       deleteModule.mutate(module.id);
                     }
                   }}
-                  className="rounded border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="btn-danger-sm"
                 >
                   Delete
                 </button>
@@ -736,7 +732,7 @@ function ModuleCard({
         {addingContentModuleId === module.id && (
           <form
             onSubmit={handleCreateContentSubmit}
-            className="space-y-3 rounded border border-slate-200 bg-slate-50 p-3"
+            className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4"
           >
             <h5 className="text-sm font-medium text-slate-800">Add Lesson / Content</h5>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -792,14 +788,14 @@ function ModuleCard({
               <button
                 type="submit"
                 disabled={createContent.isPending}
-                className="rounded bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="btn-primary-sm"
               >
                 {createContent.isPending ? "Adding..." : "Save Content"}
               </button>
               <button
                 type="button"
                 onClick={() => setAddingContentModuleId(null)}
-                className="rounded border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-white"
+                className="btn-secondary-sm"
               >
                 Cancel
               </button>
@@ -823,7 +819,7 @@ function ModuleCard({
             return (
               <li
                 key={item.id}
-                className="rounded border border-slate-200 bg-white p-3 text-sm"
+                className="rounded-xl border border-slate-200 bg-white p-4 text-sm"
               >
                 {isEditingThisContent ? (
                   <form onSubmit={handleUpdateContentSubmit} className="space-y-3">
@@ -860,7 +856,7 @@ function ModuleCard({
                       <button
                         type="submit"
                         disabled={updateContent.isPending}
-                        className="rounded bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                        className="btn-primary-sm"
                       >
                         Save
                       </button>
@@ -906,7 +902,7 @@ function ModuleCard({
                           type="button"
                           disabled={cIndex === 0}
                           onClick={() => handleMoveContent(cIndex, -1)}
-                          className="rounded border border-slate-200 px-1.5 py-0.5 text-xs hover:bg-slate-100 disabled:opacity-30"
+                          className="rounded-lg border border-slate-200 px-1.5 py-0.5 text-xs transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
                           title="Move Lesson Up"
                         >
                           &uarr;
@@ -915,7 +911,7 @@ function ModuleCard({
                           type="button"
                           disabled={cIndex === contents.length - 1}
                           onClick={() => handleMoveContent(cIndex, 1)}
-                          className="rounded border border-slate-200 px-1.5 py-0.5 text-xs hover:bg-slate-100 disabled:opacity-30"
+                          className="rounded-lg border border-slate-200 px-1.5 py-0.5 text-xs transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
                           title="Move Lesson Down"
                         >
                           &darr;
@@ -933,7 +929,7 @@ function ModuleCard({
                             });
                             clearError();
                           }}
-                          className="ml-1 rounded border border-slate-200 px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                          className="ml-1 rounded-lg border border-slate-200 px-2 py-0.5 text-xs text-slate-700 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4]"
                         >
                           Edit
                         </button>
@@ -944,7 +940,7 @@ function ModuleCard({
                               deleteContent.mutate(item.id);
                             }
                           }}
-                          className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                          className="rounded-lg border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
                         >
                           Delete
                         </button>

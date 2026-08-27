@@ -170,7 +170,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
 
   if (!quiz) {
     return (
-      <div className="rounded border border-dashed border-slate-300 bg-white p-3">
+      <div className="card border-dashed p-3">
         <ErrorNote message={error} />
         {!editable ? (
           <p className="text-xs text-slate-500">
@@ -187,7 +187,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                 value={quizForm.title}
                 onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
                 placeholder="Quiz title"
-                className="rounded border border-slate-300 px-2.5 py-1.5 text-sm sm:col-span-2"
+                className="input-field sm:col-span-2"
               />
               <label className="text-xs text-slate-600">
                 Pass %
@@ -200,7 +200,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                   onChange={(e) =>
                     setQuizForm({ ...quizForm, passingScore: e.target.value })
                   }
-                  className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                  className="input-field"
                 />
               </label>
               <label className="text-xs text-slate-600">
@@ -213,7 +213,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                     setQuizForm({ ...quizForm, maxAttempts: e.target.value })
                   }
                   placeholder="unlimited"
-                  className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                  className="input-field"
                 />
               </label>
             </div>
@@ -230,7 +230,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
             <button
               type="submit"
               disabled={createQuiz.isPending}
-              className="rounded bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+              className="btn-primary-sm"
             >
               {createQuiz.isPending ? "Creating..." : "Create Quiz"}
             </button>
@@ -257,7 +257,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
   if (questions.length === 0) problems.push("The quiz has no questions.");
 
   return (
-    <div className="rounded border border-slate-200 bg-white p-3">
+    <div className="card p-3">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -266,17 +266,17 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
         >
           {expanded ? "▾" : "▸"} Quiz: {quiz.title}
         </button>
-        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+        <span className="badge-slate">
           pass {quiz.passingScore}%
         </span>
-        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+        <span className="badge-slate">
           {quiz.maxAttempts ? `${quiz.maxAttempts} attempts` : "unlimited attempts"}
         </span>
-        <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+        <span className="badge-slate">
           {questions.length} question{questions.length === 1 ? "" : "s"} · {totalPoints} pts
         </span>
         {quiz.randomizeQuestions && (
-          <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+          <span className="badge-slate">
             randomised
           </span>
         )}
@@ -294,14 +294,14 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                 });
                 setShowSettings((open) => !open);
               }}
-              className="rounded border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100"
+              className="btn-secondary-sm"
             >
               Settings
             </button>
             <button
               type="button"
               onClick={() => deleteQuiz.mutate()}
-              className="rounded border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50"
+              className="btn-danger-sm"
             >
               Delete quiz
             </button>
@@ -314,7 +314,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
       </div>
 
       {problems.length > 0 && editable && (
-        <ul className="mt-2 list-inside list-disc rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <ul className="mt-2 list-inside list-disc rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
           {problems.map((problem) => (
             <li key={problem}>{problem}</li>
           ))}
@@ -324,14 +324,14 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
       {showSettings && editable && (
         <form
           onSubmit={handleSaveSettings}
-          className="mt-3 space-y-2 rounded border border-slate-200 bg-slate-50 p-3"
+          className="mt-3 space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3"
         >
           <div className="grid gap-2 sm:grid-cols-4">
             <input
               required
               value={quizForm.title}
               onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
-              className="rounded border border-slate-300 px-2.5 py-1.5 text-sm sm:col-span-2"
+              className="input-field sm:col-span-2"
             />
             <label className="text-xs text-slate-600">
               Pass %
@@ -342,7 +342,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                 max={100}
                 value={quizForm.passingScore}
                 onChange={(e) => setQuizForm({ ...quizForm, passingScore: e.target.value })}
-                className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                className="input-field"
               />
             </label>
             <label className="text-xs text-slate-600">
@@ -353,7 +353,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                 value={quizForm.maxAttempts}
                 onChange={(e) => setQuizForm({ ...quizForm, maxAttempts: e.target.value })}
                 placeholder="unlimited"
-                className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                className="input-field"
               />
             </label>
           </div>
@@ -370,14 +370,14 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
           <div className="flex gap-2">
             <button
               type="submit"
-              className="rounded bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+              className="btn-primary-sm"
             >
               Save settings
             </button>
             <button
               type="button"
               onClick={() => setShowSettings(false)}
-              className="rounded border border-slate-300 px-3 py-1.5 text-xs hover:bg-slate-100"
+              className="btn-secondary-sm"
             >
               Cancel
             </button>
@@ -392,9 +392,9 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
             const draft = answerDrafts[question.id] ?? { answerText: "", isCorrect: false };
 
             return (
-              <div key={question.id} className="rounded border border-slate-200 p-3">
+              <div key={question.id} className="rounded-xl border border-slate-200 p-3">
                 <div className="flex flex-wrap items-start gap-2">
-                  <span className="rounded bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                  <span className="rounded-full bg-[#0A6847] px-2 py-0.5 text-xs font-bold text-white">
                     Q{index + 1}
                   </span>
                   <p className="min-w-0 flex-1 text-sm">{question.questionText}</p>
@@ -406,7 +406,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                         type="button"
                         onClick={() => moveQuestion(index, -1)}
                         disabled={index === 0}
-                        className="rounded border border-slate-300 px-1.5 py-0.5 text-xs disabled:opacity-40"
+                        className="rounded-lg border border-slate-300 px-1.5 py-0.5 text-xs transition hover:border-[#7ABA78] disabled:opacity-40"
                         aria-label="Move question up"
                       >
                         ↑
@@ -415,7 +415,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                         type="button"
                         onClick={() => moveQuestion(index, 1)}
                         disabled={index === questions.length - 1}
-                        className="rounded border border-slate-300 px-1.5 py-0.5 text-xs disabled:opacity-40"
+                        className="rounded-lg border border-slate-300 px-1.5 py-0.5 text-xs transition hover:border-[#7ABA78] disabled:opacity-40"
                         aria-label="Move question down"
                       >
                         ↓
@@ -423,7 +423,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                       <button
                         type="button"
                         onClick={() => deleteQuestion.mutate(question.id)}
-                        className="rounded border border-red-300 px-1.5 py-0.5 text-xs text-red-700 hover:bg-red-50"
+                        className="rounded-lg border border-red-200 px-1.5 py-0.5 text-xs text-red-600 hover:bg-red-50"
                       >
                         Delete
                       </button>
@@ -444,7 +444,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                       />
                       <span
                         className={
-                          answer.isCorrect ? "font-medium text-green-800" : "text-slate-700"
+                          answer.isCorrect ? "font-semibold text-[#0A6847]" : "text-slate-700"
                         }
                       >
                         {answer.answerText}
@@ -481,7 +481,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                         }))
                       }
                       placeholder="Add an answer option"
-                      className="min-w-0 flex-1 rounded border border-slate-300 px-2.5 py-1 text-sm"
+                      className="input-field min-w-0 flex-1 py-1.5"
                     />
                     <label className="flex items-center gap-1 text-xs text-slate-600">
                       <input
@@ -498,7 +498,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                     </label>
                     <button
                       type="submit"
-                      className="rounded border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-100"
+                      className="btn-secondary-sm"
                     >
                       Add
                     </button>
@@ -511,7 +511,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
           {editable && (
             <form
               onSubmit={handleAddQuestion}
-              className="flex flex-wrap items-end gap-2 rounded border border-dashed border-slate-300 p-3"
+              className="flex flex-wrap items-end gap-2 rounded-xl border border-dashed border-slate-300 p-3"
             >
               <label className="min-w-0 flex-1 text-xs text-slate-600">
                 New question
@@ -522,7 +522,7 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                     setQuestionForm({ ...questionForm, questionText: e.target.value })
                   }
                   placeholder="Which protocol is used for..."
-                  className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                  className="mt-1 input-field"
                 />
               </label>
               <label className="w-24 text-xs text-slate-600">
@@ -536,13 +536,13 @@ export default function ModuleQuizPanel({ courseId, module, editable }) {
                   onChange={(e) =>
                     setQuestionForm({ ...questionForm, points: e.target.value })
                   }
-                  className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                  className="mt-1 input-field"
                 />
               </label>
               <button
                 type="submit"
                 disabled={createQuestion.isPending}
-                className="rounded bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                className="btn-primary-sm"
               >
                 {createQuestion.isPending ? "Adding..." : "Add Question"}
               </button>

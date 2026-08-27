@@ -26,14 +26,14 @@ export default function VideoUrlInput({ value, onChange, label = "Video URL", id
   return (
     <div className="space-y-2">
       <label className="block" htmlFor={inputId}>
-        <span className="text-sm font-medium">{label}</span>
+        <span className="label-field">{label}</span>
         <input
           id={inputId}
           type="url"
           value={value ?? ""}
           onChange={(event) => onChange(event.target.value)}
           placeholder="https://www.youtube.com/watch?v=... or https://cdn.example.com/lesson.mp4"
-          className="mt-1 w-full rounded border border-slate-300 px-3 py-2"
+          className="input-field mt-1.5"
         />
       </label>
 
@@ -43,13 +43,13 @@ export default function VideoUrlInput({ value, onChange, label = "Video URL", id
       </p>
 
       {hasInput && !parsed && (
-        <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
           {UNRECOGNISED_MESSAGE}
         </p>
       )}
 
       {parsed && (
-        <div className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/70 p-3">
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`rounded px-2 py-0.5 text-xs font-medium ${

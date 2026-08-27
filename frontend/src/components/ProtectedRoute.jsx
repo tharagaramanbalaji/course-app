@@ -8,16 +8,21 @@ export default function ProtectedRoute({ roles }) {
   const location = useLocation();
 
   if (loading) {
-    return <p className="text-slate-500">Loading...</p>;
+    return (
+      <div className="flex items-center gap-2 text-slate-500">
+        <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-[#0A6847]" />
+        Loading...
+      </div>
+    );
   }
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
   if (roles && !roles.includes(user.role)) {
     return (
-      <p className="rounded border border-amber-300 bg-amber-50 p-4 text-amber-800">
+      <div className="card border-amber-200 bg-amber-50 text-amber-800">
         Your role ({user.role}) does not have access to this page.
-      </p>
+      </div>
     );
   }
   return <Outlet />;

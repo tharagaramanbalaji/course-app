@@ -7,8 +7,10 @@ import CourseAssignmentsPage from "@/pages/CourseAssignmentsPage";
 import CourseManagePage from "@/pages/CourseManagePage";
 import CoursesPage from "@/pages/CoursesPage";
 import DashboardPage from "@/pages/DashboardPage";
+import LearnPage from "@/pages/LearnPage";
 import LoginPage from "@/pages/LoginPage";
 import NotFoundPage from "@/pages/NotFoundPage";
+import SettingsPage from "@/pages/SettingsPage";
 import UsersPage from "@/pages/UsersPage";
 
 export const router = createBrowserRouter([
@@ -22,6 +24,8 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: "courses", element: <CoursesPage /> },
+          { path: "learn/courses/:courseId", element: <LearnPage /> },
+          { path: "settings", element: <SettingsPage /> },
         ],
       },
       {
