@@ -2,6 +2,8 @@ import { createBrowserRouter } from "react-router-dom";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import RootLayout from "@/components/RootLayout";
+import AdminDashboardPage from "@/pages/AdminDashboardPage";
+import CourseAssignmentsPage from "@/pages/CourseAssignmentsPage";
 import CourseManagePage from "@/pages/CourseManagePage";
 import CoursesPage from "@/pages/CoursesPage";
 import DashboardPage from "@/pages/DashboardPage";
@@ -23,11 +25,16 @@ export const router = createBrowserRouter([
         ],
       },
       {
+        // Authoring and reporting. The backend enforces this too; the guard
+        // only avoids showing a page that would fail.
         element: <ProtectedRoute roles={["ADMIN", "INSTRUCTOR"]} />,
-        children: [{ path: "courses/:courseId/manage", element: <CourseManagePage /> }],
+        children: [
+          { path: "admin", element: <AdminDashboardPage /> },
+          { path: "courses/:courseId/manage", element: <CourseManagePage /> },
+          { path: "courses/:courseId/assignments", element: <CourseAssignmentsPage /> },
+        ],
       },
       {
-        // Role is enforced by the backend too; this only hides the page.
         element: <ProtectedRoute roles={["ADMIN"]} />,
         children: [{ path: "users", element: <UsersPage /> }],
       },

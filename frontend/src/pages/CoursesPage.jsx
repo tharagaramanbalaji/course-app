@@ -205,6 +205,15 @@ export default function CoursesPage() {
                     Manage Modules & Lessons
                   </Link>
 
+                  {course.status === "PUBLISHED" && (
+                    <Link
+                      to={`/courses/${course.id}/assignments`}
+                      className="rounded border border-slate-300 px-3 py-1.5 text-sm font-medium hover:bg-slate-100"
+                    >
+                      Assign
+                    </Link>
+                  )}
+
                   {course.status === "DRAFT" && (
                     <>
                       <button

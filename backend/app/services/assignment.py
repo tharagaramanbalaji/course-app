@@ -13,11 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessRuleError, ConflictError, NotFoundError
 from app.models.assignment import Assignment
-from app.models.enums import AssignmentStatus, CourseStatus, UserRole
+from app.models.enums import AssignmentStatus, CourseStatus, UserRole, UserStatus
 from app.models.user import User
 from app.repositories.enrollment import AssignmentRepository
 from app.repositories.user import UserRepository
-from app.schemas.assignment import AssignmentCreate, AssignmentUpdate
+from app.schemas.assignment import (
+    AssignableUserRead,
+    AssignmentCreate,
+    AssignmentUpdate,
+)
 from app.services.authoring import AuthoringGuard
 from app.services.enrollment import EnrollmentService
 
@@ -69,6 +73,32 @@ class AssignmentService:
     async def list_for_course(self, author: User, course_id: UUID) -> Sequence[Assignment]:
         await self.guard.course(author, course_id)
         return await self.assignments.list_by_course(course_id)
+
+    async def assignable_users(self, author: User, course_id: UUID) -> list[AssignableUserRead]:
+        """Learners this owner may assign the course to.
+
+        Owner-scoped rather than a general user listing, so an instructor
+        gets a picker without gaining the ADMIN ability to browse accounts.
+        """
+        await self.guard.course(author, course_id)
+
+        learners = await self.users.list_by_role(UserRole.USER, status=UserStatus.ACTIVE)
+        taken = {
+            assignment.user_id
+            for assignment in await self.assignments.list_by_course(course_id)
+            if assignment.status is not AssignmentStatus.CANCELLED
+        }
+
+        return [
+            AssignableUserRead(
+                id=learner.id,
+                first_name=learner.first_name,
+                last_name=learner.last_name,
+                email=learner.email,
+                already_assigned=learner.id in taken,
+            )
+            for learner in learners
+        ]
 
     async def get_assignment(self, caller: User, assignment_id: UUID) -> Assignment:
         """Authors reach assignments on courses they own; a learner reaches

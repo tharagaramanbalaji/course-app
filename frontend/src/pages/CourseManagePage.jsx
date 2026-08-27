@@ -5,6 +5,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, getApiErrorMessage, getApiErrorProblems } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
 import ErrorNote from "@/components/ErrorNote";
+import ModuleQuizPanel from "@/components/ModuleQuizPanel";
+import VideoUrlInput from "@/components/VideoUrlInput";
 
 const STATUS_STYLES = {
   DRAFT: "bg-amber-100 text-amber-800",
@@ -789,19 +791,11 @@ function ModuleCard({
                 />
               </label>
             ) : (
-              <label className="block">
-                <span className="text-xs font-medium text-slate-700">Video URL</span>
-                <input
-                  required
-                  type="url"
-                  placeholder="https://example.com/video.mp4 or embed link"
-                  value={contentForm.videoUrl}
-                  onChange={(e) =>
-                    setContentForm({ ...contentForm, videoUrl: e.target.value })
-                  }
-                  className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm bg-white"
-                />
-              </label>
+              <VideoUrlInput
+                id={`new-content-video-${module.id}`}
+                value={contentForm.videoUrl}
+                onChange={(videoUrl) => setContentForm({ ...contentForm, videoUrl })}
+              />
             )}
 
             <div className="flex gap-2 pt-1">
@@ -863,14 +857,12 @@ function ModuleCard({
                         className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
                       />
                     ) : (
-                      <input
-                        required
-                        type="url"
+                      <VideoUrlInput
+                        id={`edit-content-video-${editingContent.id}`}
                         value={editingContent.videoUrl || ""}
-                        onChange={(e) =>
-                          setEditingContent({ ...editingContent, videoUrl: e.target.value })
+                        onChange={(videoUrl) =>
+                          setEditingContent({ ...editingContent, videoUrl })
                         }
-                        className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
                       />
                     )}
 
@@ -976,6 +968,10 @@ function ModuleCard({
             );
           })}
         </ul>
+
+        <div className="mt-4">
+          <ModuleQuizPanel courseId={courseId} module={module} editable={isDraft} />
+        </div>
       </div>
     </div>
   );

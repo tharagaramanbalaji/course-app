@@ -5,7 +5,12 @@ from uuid import UUID
 from fastapi import APIRouter, status
 
 from app.api.deps import AuthorUser, CurrentUser, DbSession
-from app.schemas.assignment import AssignmentCreate, AssignmentRead, AssignmentUpdate
+from app.schemas.assignment import (
+    AssignableUserRead,
+    AssignmentCreate,
+    AssignmentRead,
+    AssignmentUpdate,
+)
 from app.schemas.common import DataResponse
 from app.services.assignment import AssignmentService
 
@@ -71,3 +76,19 @@ async def cancel_assignment(
     the learner has made both survive."""
     assignment = await AssignmentService(db).cancel_assignment(author, assignment_id)
     return DataResponse(data=AssignmentRead.model_validate(assignment))
+
+
+@course_router.get("/assignable-users", response_model=DataResponse[list[AssignableUserRead]])
+async def assignable_users(
+    course_id: UUID,
+    author: AuthorUser,
+    db: DbSession,
+) -> DataResponse[list[AssignableUserRead]]:
+    """Learners the owner may assign this course to.
+
+    Beyond the written contract, but the contract lets an INSTRUCTOR create
+    assignments while listing users stays ADMIN-only, which would leave an
+    instructor with no way to choose a recipient. Course-scoped and
+    owner-checked, returning only what a picker needs.
+    """
+    return DataResponse(data=await AssignmentService(db).assignable_users(author, course_id))

@@ -19,7 +19,7 @@ function Tab({ to, children }) {
 }
 
 export default function RootLayout() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isAuthor, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -31,6 +31,7 @@ export default function RootLayout() {
             <nav className="flex gap-1">
               <Tab to="/">Dashboard</Tab>
               <Tab to="/courses">Courses</Tab>
+              {isAuthor && <Tab to="/admin">Dashboard</Tab>}
               {isAdmin && <Tab to="/users">Users</Tab>}
             </nav>
           )}
