@@ -114,6 +114,24 @@ export default function CourseManagePage() {
     onError: reportError,
   });
 
+  const unpublishCourse = useMutation({
+    mutationFn: () => api.post(`/courses/${courseId}/unpublish`),
+    onSuccess: () => {
+      clearError();
+      refreshCourse();
+    },
+    onError: reportError,
+  });
+
+  const archiveCourse = useMutation({
+    mutationFn: () => api.post(`/courses/${courseId}/archive`),
+    onSuccess: () => {
+      clearError();
+      refreshCourse();
+    },
+    onError: reportError,
+  });
+
   // Module Mutations
   const createModule = useMutation({
     mutationFn: (payload) => api.post(`/courses/${courseId}/modules`, payload),
@@ -372,6 +390,46 @@ export default function CourseManagePage() {
                   </button>
                 </div>
               )}
+
+              {isAuthor && course.status === "PUBLISHED" && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Unpublish this course so you can edit it? " +
+                            "It leaves the catalogue and new learners can't self-enrol " +
+                            "until you republish. Learners already enrolled keep their access.",
+                        )
+                      ) {
+                        unpublishCourse.mutate();
+                      }
+                    }}
+                    disabled={unpublishCourse.isPending}
+                    className="btn-secondary"
+                  >
+                    {unpublishCourse.isPending ? "Unpublishing..." : "Unpublish to Edit"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          "Archive this course? It leaves the catalogue permanently. " +
+                            "Certificates and learner history are kept, but this can't be undone.",
+                        )
+                      ) {
+                        archiveCourse.mutate();
+                      }
+                    }}
+                    disabled={archiveCourse.isPending}
+                    className="btn-danger"
+                  >
+                    {archiveCourse.isPending ? "Archiving..." : "Archive Course"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -384,6 +442,14 @@ export default function CourseManagePage() {
         course={course}
         modules={modules}
       />
+
+      {isAuthor && !isDraft && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {course.status === "PUBLISHED"
+            ? "This course is published, so modules, content and quizzes are locked. Use “Unpublish to Edit” above to make changes, then republish."
+            : "This course is archived and can no longer be edited."}
+        </p>
+      )}
 
       {/* Modules & Content Section */}
       <div className="space-y-6">

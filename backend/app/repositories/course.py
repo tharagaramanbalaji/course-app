@@ -21,9 +21,16 @@ from app.repositories.base import BaseRepository
 class CourseRepository(BaseRepository[Course]):
     model = Course
 
-    async def get_owned(self, course_id: UUID, owner_id: UUID) -> Course | None:
-        """Fetch a course only if the given user owns it."""
-        stmt = select(Course).where(Course.id == course_id, Course.created_by == owner_id)
+    async def get_owned(self, course_id: UUID, owner_id: UUID | None) -> Course | None:
+        """Fetch a course, optionally restricted to a given owner.
+
+        ``owner_id=None`` means no ownership restriction: an ADMIN reaches
+        any course, an INSTRUCTOR only their own (the caller decides which
+        by what it passes here - see ``AuthoringGuard``).
+        """
+        stmt = select(Course).where(Course.id == course_id)
+        if owner_id is not None:
+            stmt = stmt.where(Course.created_by == owner_id)
         return await self.session.scalar(stmt)
 
     async def get_with_structure(self, course_id: UUID) -> Course | None:
@@ -38,11 +45,12 @@ class CourseRepository(BaseRepository[Course]):
         )
         return await self.session.scalar(stmt)
 
-    async def get_for_publication(self, course_id: UUID, owner_id: UUID) -> Course | None:
-        """The whole course tree, owner-scoped, for publication validation."""
+    async def get_for_publication(self, course_id: UUID, owner_id: UUID | None) -> Course | None:
+        """The whole course tree, optionally owner-scoped, for publication
+        validation. ``owner_id=None`` means no ownership restriction."""
         stmt = (
             select(Course)
-            .where(Course.id == course_id, Course.created_by == owner_id)
+            .where(Course.id == course_id)
             .options(
                 selectinload(Course.modules).selectinload(Module.contents),
                 selectinload(Course.modules)
@@ -51,6 +59,8 @@ class CourseRepository(BaseRepository[Course]):
                 .selectinload(Question.answers),
             )
         )
+        if owner_id is not None:
+            stmt = stmt.where(Course.created_by == owner_id)
         return await self.session.scalar(stmt)
 
     async def list_by_owner(

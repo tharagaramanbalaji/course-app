@@ -1,13 +1,16 @@
 """Ownership and lifecycle resolution for course authoring.
 
 Every authoring route has to answer two questions before doing anything:
-does the caller own the course this node belongs to, and is that course
+may the caller reach the course this node belongs to, and is that course
 still a DRAFT? The endpoints for questions and answers receive only a
 quiz or question id, so the answer means walking back up to
 ``courses.created_by``. That walk lives here rather than being repeated.
 
-A node the caller does not own is reported as missing, not forbidden:
-probing ids must not reveal that another author's course exists.
+An INSTRUCTOR may reach only a course they created; a node outside that is
+reported as missing, not forbidden, so probing ids cannot reveal that
+another author's course exists. An ADMIN has no such restriction - they
+manage every course, including ones an INSTRUCTOR created - so the same
+"missing" outcome for them means the id genuinely does not exist.
 """
 
 from uuid import UUID
@@ -17,12 +20,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import BusinessRuleError, NotFoundError
 from app.models.content import Content
 from app.models.course import Course
-from app.models.enums import CourseStatus
+from app.models.enums import CourseStatus, UserRole
 from app.models.module import Module
 from app.models.quiz import Answer, Question, Quiz
 from app.models.user import User
 from app.repositories.course import ContentRepository, CourseRepository, ModuleRepository
 from app.repositories.quiz import AnswerRepository, QuestionRepository, QuizRepository
+
+
+def ownership_scope(author: User) -> UUID | None:
+    """The ownership filter a lookup should apply for this caller.
+
+    ``None`` means unrestricted: an ADMIN reaches any course. Anyone else
+    (an INSTRUCTOR) is scoped to courses they created.
+    """
+    return None if author.role is UserRole.ADMIN else author.id
 
 
 def _require_draft(course: Course) -> None:
@@ -48,8 +60,9 @@ class AuthoringGuard:
     # --- courses -------------------------------------------------------
 
     async def course(self, author: User, course_id: UUID) -> Course:
-        """An owned course in any lifecycle state."""
-        course = await self.courses.get_owned(course_id, author.id)
+        """A reachable course in any lifecycle state: any course for an
+        ADMIN, an owned one for anyone else."""
+        course = await self.courses.get_owned(course_id, ownership_scope(author))
         if course is None:
             raise NotFoundError("Course not found.")
         return course
@@ -102,7 +115,8 @@ class AuthoringGuard:
 
     async def quiz(self, author: User, quiz_id: UUID) -> Quiz:
         quiz = await self.quizzes.get_with_course(quiz_id)
-        if quiz is None or quiz.module.course.created_by != author.id:
+        scope = ownership_scope(author)
+        if quiz is None or (scope is not None and quiz.module.course.created_by != scope):
             raise NotFoundError("Quiz not found.")
         return quiz
 
@@ -113,7 +127,10 @@ class AuthoringGuard:
 
     async def question(self, author: User, question_id: UUID) -> Question:
         question = await self.questions.get_with_course(question_id)
-        if question is None or question.quiz.module.course.created_by != author.id:
+        scope = ownership_scope(author)
+        if question is None or (
+            scope is not None and question.quiz.module.course.created_by != scope
+        ):
             raise NotFoundError("Question not found.")
         return question
 
@@ -124,7 +141,10 @@ class AuthoringGuard:
 
     async def answer(self, author: User, answer_id: UUID) -> Answer:
         answer = await self.answers.get_with_course(answer_id)
-        if answer is None or answer.question.quiz.module.course.created_by != author.id:
+        scope = ownership_scope(author)
+        if answer is None or (
+            scope is not None and answer.question.quiz.module.course.created_by != scope
+        ):
             raise NotFoundError("Answer not found.")
         return answer
 

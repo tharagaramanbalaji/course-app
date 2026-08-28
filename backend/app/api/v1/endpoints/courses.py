@@ -83,3 +83,28 @@ async def publish_course(
     """Validate the whole course tree, then publish it in one transaction."""
     course = await CourseService(db).publish_course(author, course_id)
     return DataResponse(data=CourseRead.model_validate(course))
+
+
+@router.post("/{course_id}/unpublish", response_model=DataResponse[CourseRead])
+async def unpublish_course(
+    course_id: UUID,
+    author: AuthorUser,
+    db: DbSession,
+) -> DataResponse[CourseRead]:
+    """Owner only. Returns a PUBLISHED course to DRAFT so it can be edited
+    again, then republished - the sanctioned route around "no post-publication
+    editing" rather than an exception to it."""
+    course = await CourseService(db).unpublish_course(author, course_id)
+    return DataResponse(data=CourseRead.model_validate(course))
+
+
+@router.post("/{course_id}/archive", response_model=DataResponse[CourseRead])
+async def archive_course(
+    course_id: UUID,
+    author: AuthorUser,
+    db: DbSession,
+) -> DataResponse[CourseRead]:
+    """Owner only. Retires a course (from DRAFT or PUBLISHED) without
+    deleting it, so certificates and completions stay intact."""
+    course = await CourseService(db).archive_course(author, course_id)
+    return DataResponse(data=CourseRead.model_validate(course))

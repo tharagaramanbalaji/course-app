@@ -85,6 +85,24 @@ export default function CoursesPage() {
     onError: reportError,
   });
 
+  const unpublishCourse = useMutation({
+    mutationFn: (id) => api.post(`/courses/${id}/unpublish`),
+    onSuccess: () => {
+      clearError();
+      refresh();
+    },
+    onError: reportError,
+  });
+
+  const archiveCourse = useMutation({
+    mutationFn: (id) => api.post(`/courses/${id}/archive`),
+    onSuccess: () => {
+      clearError();
+      refresh();
+    },
+    onError: reportError,
+  });
+
   const enrollCourse = useMutation({
     mutationFn: (id) => api.post(`/courses/${id}/enroll`),
     onSuccess: (_response, courseId) => {
@@ -279,6 +297,44 @@ export default function CoursesPage() {
                           className="btn-danger-sm"
                         >
                           Delete
+                        </button>
+                      </>
+                    )}
+
+                    {course.status === "PUBLISHED" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Unpublish this course so you can edit it? " +
+                                  "It leaves the catalogue and new learners can't self-enrol " +
+                                  "until you republish. Learners already enrolled keep their access.",
+                              )
+                            ) {
+                              unpublishCourse.mutate(course.id);
+                            }
+                          }}
+                          className="btn-secondary-sm"
+                        >
+                          Unpublish to edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Archive this course? It leaves the catalogue permanently. " +
+                                  "Certificates and learner history are kept, but this can't be undone.",
+                              )
+                            ) {
+                              archiveCourse.mutate(course.id);
+                            }
+                          }}
+                          className="btn-danger-sm"
+                        >
+                          Archive
                         </button>
                       </>
                     )}

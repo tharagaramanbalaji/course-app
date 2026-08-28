@@ -221,3 +221,158 @@ async def test_only_the_owner_can_publish(client, db_session):
     response = await client.post(f"{COURSES}/{course.id}/publish", headers=headers)
 
     assert response.status_code == 404
+
+
+# --- unpublish and archive: the sanctioned way around "no post-publication
+# editing", not an exception to it -----------------------------------------
+
+
+async def test_unpublishing_returns_a_course_to_draft_and_allows_editing(client, db_session):
+    author, headers = await _author(client, db_session)
+    course = await f.make_course(db_session, author, status=CourseStatus.PUBLISHED)
+
+    response = await client.post(f"{COURSES}/{course.id}/unpublish", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()["data"]
+    assert data["status"] == "DRAFT"
+    assert data["publishedAt"] is None
+
+    # The existing DRAFT-only edit rule now applies normally - no separate
+    # "editing while published" path was introduced.
+    edit = await client.patch(
+        f"{COURSES}/{course.id}", headers=headers, json={"title": "Fixed title"}
+    )
+    assert edit.status_code == 200
+    assert edit.json()["data"]["title"] == "Fixed title"
+
+
+async def test_only_a_published_course_can_be_unpublished(client, db_session):
+    author, headers = await _author(client, db_session)
+    course = await f.make_course(db_session, author, status=CourseStatus.DRAFT)
+
+    response = await client.post(f"{COURSES}/{course.id}/unpublish", headers=headers)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "BUSINESS_RULE_VIOLATION"
+
+
+async def test_only_the_owner_can_unpublish(client, db_session):
+    author = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    course = await f.make_course(db_session, author, status=CourseStatus.PUBLISHED)
+    await f.make_user(db_session, email="other@example.com", role=UserRole.INSTRUCTOR)
+    headers = await f.auth_headers(client, "other@example.com")
+
+    response = await client.post(f"{COURSES}/{course.id}/unpublish", headers=headers)
+
+    assert response.status_code == 404
+
+
+async def test_archiving_retires_a_published_course_without_deleting_it(client, db_session):
+    author, headers = await _author(client, db_session)
+    course = await f.make_course(db_session, author, status=CourseStatus.PUBLISHED)
+
+    response = await client.post(f"{COURSES}/{course.id}/archive", headers=headers)
+
+    assert response.status_code == 200
+    assert response.json()["data"]["status"] == "ARCHIVED"
+
+    # Still there, and still not editable - archiving is not a way to
+    # sidestep "no post-publication editing" either.
+    edit = await client.patch(
+        f"{COURSES}/{course.id}", headers=headers, json={"title": "Renamed"}
+    )
+    assert edit.status_code == 422
+
+
+async def test_an_already_archived_course_cannot_be_archived_again(client, db_session):
+    author, headers = await _author(client, db_session)
+    course = await f.make_course(db_session, author, status=CourseStatus.ARCHIVED)
+
+    response = await client.post(f"{COURSES}/{course.id}/archive", headers=headers)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "BUSINESS_RULE_VIOLATION"
+
+
+async def test_only_the_owner_can_archive(client, db_session):
+    author = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    course = await f.make_course(db_session, author, status=CourseStatus.PUBLISHED)
+    await f.make_user(db_session, email="other@example.com", role=UserRole.INSTRUCTOR)
+    headers = await f.auth_headers(client, "other@example.com")
+
+    response = await client.post(f"{COURSES}/{course.id}/archive", headers=headers)
+
+    assert response.status_code == 404
+
+
+# --- ADMIN manages every course, not just its own ---------------------
+
+
+async def test_an_admin_sees_every_course_not_just_its_own(client, db_session):
+    instructor = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    await f.make_course(db_session, instructor, title="Instructor's course")
+    await f.make_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
+    headers = await f.auth_headers(client, "admin@example.com")
+
+    response = await client.get(COURSES, headers=headers)
+
+    titles = [row["title"] for row in response.json()["data"]]
+    assert "Instructor's course" in titles
+
+
+async def test_an_admin_can_edit_and_delete_an_instructors_draft_course(client, db_session):
+    instructor = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    course = await f.make_course(db_session, instructor, status=CourseStatus.DRAFT)
+    await f.make_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
+    headers = await f.auth_headers(client, "admin@example.com")
+
+    edit = await client.patch(
+        f"{COURSES}/{course.id}", headers=headers, json={"title": "Edited by admin"}
+    )
+    assert edit.status_code == 200
+    assert edit.json()["data"]["title"] == "Edited by admin"
+
+    delete = await client.delete(f"{COURSES}/{course.id}", headers=headers)
+    assert delete.status_code == 204
+
+
+async def test_an_admin_can_publish_unpublish_and_archive_an_instructors_course(
+    client, db_session
+):
+    instructor = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    course = await f.make_course(db_session, instructor)
+    module = await f.make_module(db_session, course, title="One")
+    await f.make_content(db_session, module)
+    quiz = await f.make_quiz(db_session, module)
+    question = await f.make_question(db_session, quiz)
+    await f.make_answers(db_session, question)
+    await f.make_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
+    headers = await f.auth_headers(client, "admin@example.com")
+
+    published = await client.post(f"{COURSES}/{course.id}/publish", headers=headers)
+    assert published.status_code == 200
+    assert published.json()["data"]["status"] == "PUBLISHED"
+
+    unpublished = await client.post(f"{COURSES}/{course.id}/unpublish", headers=headers)
+    assert unpublished.status_code == 200
+    assert unpublished.json()["data"]["status"] == "DRAFT"
+
+    archived = await client.post(f"{COURSES}/{course.id}/archive", headers=headers)
+    assert archived.status_code == 200
+    assert archived.json()["data"]["status"] == "ARCHIVED"
+
+
+async def test_an_instructor_still_cannot_reach_another_instructors_course(client, db_session):
+    """The ADMIN carve-out does not leak into INSTRUCTOR: ownership scoping
+    for a non-admin author is unchanged."""
+    owner = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    course = await f.make_course(db_session, owner, status=CourseStatus.DRAFT)
+    await f.make_user(db_session, email="other@example.com", role=UserRole.INSTRUCTOR)
+    headers = await f.auth_headers(client, "other@example.com")
+
+    response = await client.patch(
+        f"{COURSES}/{course.id}", headers=headers, json={"title": "Hijacked"}
+    )
+
+    assert response.status_code == 404

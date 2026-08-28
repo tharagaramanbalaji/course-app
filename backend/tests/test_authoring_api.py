@@ -69,6 +69,23 @@ async def test_another_authors_modules_are_not_reachable(client, db_session):
     assert response.status_code == 404
 
 
+async def test_an_admin_can_manage_modules_on_an_instructors_course(client, db_session):
+    """ADMIN has no ownership scope: it manages every course, not just its own."""
+    instructor = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
+    course = await f.make_course(db_session, instructor)
+    await f.make_user(db_session, email="admin@example.com", role=UserRole.ADMIN)
+    admin_headers = await f.auth_headers(client, "admin@example.com")
+
+    created = await client.post(
+        _modules_url(course.id), headers=admin_headers, json={"title": "Added by admin"}
+    )
+    assert created.status_code == 201
+
+    listed = await client.get(_modules_url(course.id), headers=admin_headers)
+    assert listed.status_code == 200
+    assert len(listed.json()["data"]) == 1
+
+
 async def test_a_learner_cannot_create_a_module(client, db_session):
     author = await f.make_user(db_session, email="ivan@example.com", role=UserRole.INSTRUCTOR)
     course = await f.make_course(db_session, author)
