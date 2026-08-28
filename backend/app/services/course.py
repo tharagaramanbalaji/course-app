@@ -94,7 +94,14 @@ class CourseService:
         return course
 
     async def delete_course(self, owner: User, course_id: UUID) -> None:
-        course = await self._owned_draft(owner, course_id, action="deleted")
+        course = await self.courses.get_owned(course_id, ownership_scope(owner))
+        if course is None:
+            raise NotFoundError("Course not found.")
+        if course.status not in (CourseStatus.DRAFT, CourseStatus.ARCHIVED):
+            raise BusinessRuleError(
+                f"A {course.status.value} course cannot be deleted. "
+                "Only DRAFT or ARCHIVED courses can be removed."
+            )
         await self.courses.delete(course)
         await self.session.commit()
 

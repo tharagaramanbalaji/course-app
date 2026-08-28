@@ -51,6 +51,7 @@ class ContentService:
             content_type=payload.content_type,
             content_body=payload.content_body,
             video_url=payload.video_url,
+            description=payload.description,
             display_order=display_order,
         )
         self.contents.add(content)
@@ -150,6 +151,7 @@ class ContentService:
                 content_type=content.content_type,
                 content_body=content.content_body,
                 video_url=content.video_url,
+                description=content.description,
                 display_order=content.display_order,
                 completed=content.id in completed_ids,
             )

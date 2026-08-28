@@ -46,6 +46,7 @@ class Content(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     content_body: Mapped[str | None] = mapped_column(Text, nullable=True)
     video_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     display_order: Mapped[int] = mapped_column(Integer, nullable=False)
 
     module: Mapped[Module] = relationship(back_populates="contents")

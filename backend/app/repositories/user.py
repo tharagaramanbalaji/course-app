@@ -1,6 +1,7 @@
 """User data access."""
 
 from collections.abc import Sequence
+from uuid import UUID
 
 from sqlalchemy import func, or_, select
 
@@ -16,6 +17,26 @@ def normalize_email(email: str) -> str:
 
 class UserRepository(BaseRepository[User]):
     model = User
+
+    async def has_courses(self, user_id: UUID) -> bool:
+        from app.models.course import Course
+
+        return await self.exists(Course.created_by == user_id)
+
+    async def has_dependencies(self, user_id: UUID) -> bool:
+        """Any row that RESTRICTs deletion of this user."""
+        from app.models.assignment import Assignment
+        from app.models.course import Course
+        from app.models.enrollment import Enrollment
+
+        return await self.exists(
+            or_(
+                Course.created_by == user_id,
+                Assignment.user_id == user_id,
+                Assignment.assigned_by == user_id,
+                Enrollment.user_id == user_id,
+            )
+        )
 
     async def get_by_email(self, email: str) -> User | None:
         stmt = select(User).where(User.email == normalize_email(email))

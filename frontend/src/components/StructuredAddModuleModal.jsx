@@ -14,12 +14,14 @@ const PRESET_TEMPLATES = [
         contentType: "VIDEO",
         contentBody: "",
         videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        description: "",
       },
       {
         title: "Lecture Notes & Key Takeaways",
         contentType: "TEXT",
         contentBody: "Here are the key concepts and reference material covered in this lesson.",
         videoUrl: "",
+        description: "",
       },
     ],
     quiz: {
@@ -59,18 +61,21 @@ const PRESET_TEMPLATES = [
         contentType: "TEXT",
         contentBody: "Welcome to this module. In this section, we will explore fundamental principles.",
         videoUrl: "",
+        description: "",
       },
       {
         title: "2. Deep Dive Video Lesson",
         contentType: "VIDEO",
         contentBody: "",
         videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        description: "",
       },
       {
         title: "3. Summary & Best Practices",
         contentType: "TEXT",
         contentBody: "Review of key principles and reference guidelines for practical applications.",
         videoUrl: "",
+        description: "",
       },
     ],
     quiz: null,
@@ -160,6 +165,7 @@ export default function StructuredAddModuleModal({
         contentType: "TEXT",
         contentBody: "",
         videoUrl: "",
+        description: "",
       },
     ]);
   }
@@ -317,6 +323,7 @@ export default function StructuredAddModuleModal({
           contentType: l.contentType === "VIDEO" ? "VIDEO" : "TEXT",
           contentBody: l.contentBody || "",
           videoUrl: l.videoUrl || "",
+          description: l.description || "",
         }));
         setInitialLessons(parsedLessons);
       }
@@ -385,6 +392,7 @@ export default function StructuredAddModuleModal({
           contentType: l.contentType,
           contentBody: l.contentType === "TEXT" ? l.contentBody : null,
           videoUrl: l.contentType === "VIDEO" ? l.videoUrl : null,
+          description: l.contentType === "VIDEO" ? l.description || null : null,
         });
       }
 
@@ -674,11 +682,27 @@ export default function StructuredAddModuleModal({
                             />
                           </label>
                         ) : (
-                          <VideoUrlInput
-                            id={`structured-video-${lesson.id}`}
-                            value={lesson.videoUrl}
-                            onChange={(url) => handleUpdateLesson(index, "videoUrl", url)}
-                          />
+                          <div className="space-y-3">
+                            <VideoUrlInput
+                              id={`structured-video-${lesson.id}`}
+                              value={lesson.videoUrl}
+                              onChange={(url) => handleUpdateLesson(index, "videoUrl", url)}
+                            />
+                            <label className="block">
+                              <span className="text-xs font-medium text-slate-700">
+                                Description (optional)
+                              </span>
+                              <textarea
+                                rows={2}
+                                placeholder="Brief description of this video lesson..."
+                                value={lesson.description || ""}
+                                onChange={(e) =>
+                                  handleUpdateLesson(index, "description", e.target.value)
+                                }
+                                className="input-field mt-1"
+                              />
+                            </label>
+                          </div>
                         )}
                       </div>
                     ))}

@@ -52,8 +52,9 @@ export default function CourseManagePage() {
     contentType: "TEXT",
     contentBody: "",
     videoUrl: "",
+    description: "",
   });
-  const [editingContent, setEditingContent] = useState(null); // { id, moduleId, title, contentBody, videoUrl }
+  const [editingContent, setEditingContent] = useState(null); // { id, moduleId, title, contentBody, videoUrl, description }
 
   function reportError(mutationError) {
     setError(getApiErrorMessage(mutationError));
@@ -586,7 +587,7 @@ function ModuleCard({
       api.post(`/courses/${courseId}/modules/${module.id}/contents`, payload),
     onSuccess: () => {
       setAddingContentModuleId(null);
-      setContentForm({ title: "", contentType: "TEXT", contentBody: "", videoUrl: "" });
+      setContentForm({ title: "", contentType: "TEXT", contentBody: "", videoUrl: "", description: "" });
       clearError();
       refreshContents();
     },
@@ -636,6 +637,7 @@ function ModuleCard({
       contentType: contentForm.contentType,
       contentBody: contentForm.contentType === "TEXT" ? contentForm.contentBody : null,
       videoUrl: contentForm.contentType === "VIDEO" ? contentForm.videoUrl : null,
+      description: contentForm.contentType === "VIDEO" ? contentForm.description || null : null,
     };
     createContent.mutate(payload);
   }
@@ -648,6 +650,7 @@ function ModuleCard({
       title: editingContent.title,
       contentBody: editingContent.contentType === "TEXT" ? editingContent.contentBody : null,
       videoUrl: editingContent.contentType === "VIDEO" ? editingContent.videoUrl : null,
+      description: editingContent.contentType === "VIDEO" ? editingContent.description || null : null,
     };
     updateContent.mutate({ contentId: editingContent.id, payload });
   }
@@ -784,6 +787,7 @@ function ModuleCard({
                   contentType: "TEXT",
                   contentBody: "",
                   videoUrl: "",
+                  description: "",
                 });
                 clearError();
               }}
@@ -843,11 +847,25 @@ function ModuleCard({
                 />
               </label>
             ) : (
-              <VideoUrlInput
-                id={`new-content-video-${module.id}`}
-                value={contentForm.videoUrl}
-                onChange={(videoUrl) => setContentForm({ ...contentForm, videoUrl })}
-              />
+              <div className="space-y-3">
+                <VideoUrlInput
+                  id={`new-content-video-${module.id}`}
+                  value={contentForm.videoUrl}
+                  onChange={(videoUrl) => setContentForm({ ...contentForm, videoUrl })}
+                />
+                <label className="block">
+                  <span className="text-xs font-medium text-slate-700">Description (optional)</span>
+                  <textarea
+                    rows={2}
+                    placeholder="Brief description of this video lesson..."
+                    value={contentForm.description}
+                    onChange={(e) =>
+                      setContentForm({ ...contentForm, description: e.target.value })
+                    }
+                    className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm bg-white"
+                  />
+                </label>
+              </div>
             )}
 
             <div className="flex gap-2 pt-1">
@@ -909,13 +927,24 @@ function ModuleCard({
                         className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
                       />
                     ) : (
-                      <VideoUrlInput
-                        id={`edit-content-video-${editingContent.id}`}
-                        value={editingContent.videoUrl || ""}
-                        onChange={(videoUrl) =>
-                          setEditingContent({ ...editingContent, videoUrl })
-                        }
-                      />
+                      <div className="space-y-3">
+                        <VideoUrlInput
+                          id={`edit-content-video-${editingContent.id}`}
+                          value={editingContent.videoUrl || ""}
+                          onChange={(videoUrl) =>
+                            setEditingContent({ ...editingContent, videoUrl })
+                          }
+                        />
+                        <textarea
+                          rows={2}
+                          placeholder="Brief description of this video lesson..."
+                          value={editingContent.description || ""}
+                          onChange={(e) =>
+                            setEditingContent({ ...editingContent, description: e.target.value })
+                          }
+                          className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
+                        />
+                      </div>
                     )}
 
                     <div className="flex gap-2">
@@ -992,6 +1021,7 @@ function ModuleCard({
                               contentType: item.contentType,
                               contentBody: item.contentBody || "",
                               videoUrl: item.videoUrl || "",
+                              description: item.description || "",
                             });
                             clearError();
                           }}

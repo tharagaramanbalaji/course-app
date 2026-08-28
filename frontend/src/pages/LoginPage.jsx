@@ -5,11 +5,20 @@ import { getApiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
 import ErrorNote from "@/components/ErrorNote";
 
+const ADMIN_PATHS = ["/admin", "/users"];
+const AUTHOR_PATHS_RE = /^\/courses\/[^/]+\/(manage|assignments)/;
+
+function canAccess(role, path) {
+  if (ADMIN_PATHS.includes(path)) return role === "ADMIN";
+  if (AUTHOR_PATHS_RE.test(path)) return role === "ADMIN" || role === "INSTRUCTOR";
+  return true;
+}
+
 // Development seed accounts, printed by backend/scripts/seed.py.
 const SEED_LOGINS = [
   ["admin@example.com", "Admin123!", "ADMIN"],
   ["instructor@example.com", "Teach123!", "INSTRUCTOR"],
-  ["learner@example.com", "Learn123!", "USER"],
+  ["user1@gmail.com", "tharak28", "USER"],
 ];
 
 export default function LoginPage() {
@@ -31,8 +40,9 @@ export default function LoginPage() {
     setError("");
     setSubmitting(true);
     try {
-      await login(email, password);
-      navigate(location.state?.from ?? "/", { replace: true });
+      const loggedIn = await login(email, password);
+      const from = location.state?.from;
+      navigate(from && canAccess(loggedIn.role, from) ? from : "/", { replace: true });
     } catch (loginError) {
       setError(getApiErrorMessage(loginError));
     } finally {
@@ -52,7 +62,7 @@ export default function LoginPage() {
         {/* Card Header with Brand Logo */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-white shadow-sm border border-[#7ABA78]/30">
-            <img src="/logo.png" alt="Learn Flow Logo" className="h-12 w-auto object-contain" />
+            <img src="/logo.png" alt="LearnFlow Logo" className="h-12 w-auto object-contain" />
           </div>
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">

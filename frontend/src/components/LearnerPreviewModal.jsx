@@ -203,6 +203,11 @@ function LearnerModulePreviewCard({ courseId, mod, modIdx }) {
                           </a>
                         </p>
                       )}
+                      {item.description && (
+                        <p className="text-xs text-slate-700 whitespace-pre-wrap pl-2 border-l-2 border-slate-300 leading-relaxed">
+                          {item.description}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

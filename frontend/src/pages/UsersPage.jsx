@@ -57,6 +57,15 @@ export default function UsersPage() {
     onError: reportError,
   });
 
+  const deleteUser = useMutation({
+    mutationFn: (id) => api.delete(`/users/${id}`),
+    onSuccess: () => {
+      setError("");
+      refresh();
+    },
+    onError: reportError,
+  });
+
   function handleCreate(event) {
     event.preventDefault();
     setError("");
@@ -164,6 +173,7 @@ export default function UsersPage() {
                 <th className="px-4 py-2.5 font-semibold text-slate-600">Email</th>
                 <th className="px-4 py-2.5 font-semibold text-slate-600">Role</th>
                 <th className="px-4 py-2.5 font-semibold text-slate-600">Status</th>
+                <th className="px-4 py-2.5 font-semibold text-slate-600"></th>
               </tr>
             </thead>
             <tbody>
@@ -200,6 +210,23 @@ export default function UsersPage() {
                       className={user.status === "ACTIVE" ? "badge-brand" : "badge-slate"}
                     >
                       {user.status}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
+                          )
+                        ) {
+                          deleteUser.mutate(user.id);
+                        }
+                      }}
+                      className="text-sm font-medium text-red-600 hover:underline"
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>

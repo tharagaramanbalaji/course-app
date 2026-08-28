@@ -90,3 +90,13 @@ async def update_user_status(
 ) -> DataResponse[UserRead]:
     user = await UserService(db).set_status(user_id, payload.status)
     return DataResponse(data=UserRead.model_validate(user))
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user(
+    user_id: UUID,
+    _: AdminUser,
+    db: DbSession,
+) -> None:
+    """Delete a user. Fails if the user owns courses."""
+    await UserService(db).delete_user(user_id)

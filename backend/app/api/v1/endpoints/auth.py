@@ -5,7 +5,7 @@ from fastapi import APIRouter, status
 from app.api.deps import CurrentUser, DbSession
 from app.schemas.auth import AccessTokenResponse, LoginRequest, LoginResponse, RefreshRequest
 from app.schemas.common import DataResponse
-from app.schemas.user import UserRead
+from app.schemas.user import UserRead, UserSelfUpdate
 from app.services.auth import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -42,3 +42,20 @@ async def logout(user: CurrentUser, db: DbSession) -> None:
 @router.get("/me", response_model=DataResponse[UserRead])
 async def me(user: CurrentUser) -> DataResponse[UserRead]:
     return DataResponse(data=UserRead.model_validate(user))
+
+
+@router.patch("/me", response_model=DataResponse[UserRead])
+async def update_me(
+    payload: UserSelfUpdate,
+    user: CurrentUser,
+    db: DbSession,
+) -> DataResponse[UserRead]:
+    """Edit the caller's own profile: first name, last name, or email."""
+    updated = await AuthService(db).update_me(user, payload)
+    return DataResponse(data=UserRead.model_validate(updated))
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(user: CurrentUser, db: DbSession) -> None:
+    """Delete the caller's own account. Fails if the user owns courses."""
+    await AuthService(db).delete_me(user)

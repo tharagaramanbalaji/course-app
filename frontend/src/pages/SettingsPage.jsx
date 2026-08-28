@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 import { api, getApiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
@@ -10,14 +11,11 @@ function getInitials(firstName = "", lastName = "") {
   return (f + l).toUpperCase() || "U";
 }
 
-const ROLE_COPY = {
-  ADMIN: "Full platform access: manage users, author courses and view every report.",
-  INSTRUCTOR: "Author and publish your own courses, assign them and track learner progress.",
-  USER: "Browse and enrol in published courses, complete modules and earn certificates.",
-};
-
 export default function SettingsPage() {
   const { user, logout } = useAuth();
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [error, setError] = useState("");
 
   const meQuery = useQuery({
     queryKey: ["me"],
@@ -25,6 +23,50 @@ export default function SettingsPage() {
   });
 
   const me = meQuery.data ?? user;
+
+  const [form, setForm] = useState({ firstName: "", lastName: "", email: "" });
+
+  function startEditing() {
+    setForm({ firstName: me.firstName, lastName: me.lastName, email: me.email });
+    setError("");
+    setEditing(true);
+  }
+
+  const updateProfile = useMutation({
+    mutationFn: (payload) => api.patch("/auth/me", payload),
+    onSuccess: (response) => {
+      queryClient.setQueryData(["me"], response.data);
+      queryClient.invalidateQueries({ queryKey: ["me"] });
+      setError("");
+      setEditing(false);
+    },
+    onError: (mutationError) => setError(getApiErrorMessage(mutationError)),
+  });
+
+  const deleteAccount = useMutation({
+    mutationFn: () => api.delete("/auth/me"),
+    onSuccess: () => {
+      queryClient.clear();
+      logout();
+    },
+    onError: (mutationError) => setError(getApiErrorMessage(mutationError)),
+  });
+
+  function handleSave(event) {
+    event.preventDefault();
+    setError("");
+    updateProfile.mutate(form);
+  }
+
+  function handleDelete() {
+    if (
+      confirm(
+        "Are you sure you want to delete your account? This action cannot be undone.",
+      )
+    ) {
+      deleteAccount.mutate();
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -36,6 +78,7 @@ export default function SettingsPage() {
       </div>
 
       {meQuery.isError && <ErrorNote message={getApiErrorMessage(meQuery.error)} />}
+      <ErrorNote message={error} />
 
       <div className="card-flush">
         <div className="brand-gradient-subtle flex items-center gap-4 border-b border-slate-100 px-6 py-6">
@@ -51,25 +94,68 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <dl className="grid gap-px bg-slate-100 sm:grid-cols-2">
-          {[
-            ["First name", me.firstName],
-            ["Last name", me.lastName],
-            ["Email", me.email],
-            ["Role", me.role],
-            ["Status", me.status],
-          ].map(([label, value]) => (
-            <div key={label} className="bg-white px-6 py-4">
-              <dt className="label-field">{label}</dt>
-              <dd className="mt-1 text-sm font-semibold text-slate-900">{value}</dd>
+        {!editing ? (
+          <div className="flex items-center justify-between px-6 py-4">
+            <dl className="grid flex-1 gap-px sm:grid-cols-2">
+              {[
+                ["First name", me.firstName],
+                ["Last name", me.lastName],
+                ["Email", me.email],
+                ["Role", me.role],
+                ["Status", me.status],
+              ].map(([label, value]) => (
+                <div key={label} className="bg-white px-0 py-4 first:pl-0">
+                  <dt className="label-field">{label}</dt>
+                  <dd className="mt-1 text-sm font-semibold text-slate-900">{value}</dd>
+                </div>
+              ))}
+            </dl>
+            <button type="button" onClick={startEditing} className="btn-secondary shrink-0">
+              Edit profile
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSave} className="space-y-4 px-6 py-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="label-field">First name</span>
+                <input
+                  required
+                  value={form.firstName}
+                  onChange={(event) => setForm({ ...form, firstName: event.target.value })}
+                  className="input-field mt-1.5"
+                />
+              </label>
+              <label className="block">
+                <span className="label-field">Last name</span>
+                <input
+                  required
+                  value={form.lastName}
+                  onChange={(event) => setForm({ ...form, lastName: event.target.value })}
+                  className="input-field mt-1.5"
+                />
+              </label>
+              <label className="block sm:col-span-2">
+                <span className="label-field">Email</span>
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(event) => setForm({ ...form, email: event.target.value })}
+                  className="input-field mt-1.5"
+                />
+              </label>
             </div>
-          ))}
-        </dl>
-      </div>
-
-      <div className="card">
-        <h2 className="text-sm font-bold text-slate-900">What your role can do</h2>
-        <p className="mt-1.5 text-sm text-slate-600">{ROLE_COPY[me.role]}</p>
+            <div className="flex gap-2">
+              <button type="submit" disabled={updateProfile.isPending} className="btn-primary">
+                {updateProfile.isPending ? "Saving..." : "Save changes"}
+              </button>
+              <button type="button" onClick={() => setEditing(false)} className="btn-secondary">
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
       </div>
 
       <div className="card flex flex-wrap items-center justify-between gap-3">
@@ -79,6 +165,23 @@ export default function SettingsPage() {
         </div>
         <button type="button" onClick={logout} className="btn-danger">
           Sign out
+        </button>
+      </div>
+
+      <div className="card flex flex-wrap items-center justify-between gap-3 border-red-200">
+        <div>
+          <h2 className="text-sm font-bold text-red-600">Danger zone</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Permanently delete your account and all associated data.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={deleteAccount.isPending}
+          className="btn-danger"
+        >
+          {deleteAccount.isPending ? "Deleting..." : "Delete account"}
         </button>
       </div>
     </div>

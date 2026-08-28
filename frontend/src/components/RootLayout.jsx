@@ -49,8 +49,14 @@ export default function RootLayout() {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center transition-transform hover:scale-[1.03]">
-            <img src="/logo.png" alt="LearnFlow" className="h-11 w-auto object-contain" />
+          <Link to="/" className="flex items-center gap-2.5 transition-transform hover:scale-[1.03]">
+            <img src="/logo.png" alt="LearnFlow" className="h-10 w-auto object-contain" />
+            <span
+              className="text-xl font-extrabold tracking-tight text-slate-900"
+              style={{ fontFamily: "'League Spartan', sans-serif" }}
+            >
+              Learn<span className="text-[#0A6847]">Flow</span>
+            </span>
           </Link>
 
           {/* Center Pill Nav Bar */}
@@ -163,7 +169,7 @@ export default function RootLayout() {
       <footer className="border-t border-slate-200/80 bg-white py-6 mt-auto">
         <div className="mx-auto max-w-7xl px-6 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">LearnFlow</span>
+            <span className="font-semibold text-slate-700" style={{ fontFamily: "'League Spartan', sans-serif" }}>LearnFlow</span>
             <span>&bull;</span>
             <span>Enterprise Course Training Platform</span>
           </div>

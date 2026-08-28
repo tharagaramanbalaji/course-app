@@ -49,3 +49,11 @@ class UserRoleUpdate(CamelModel):
 
 class UserStatusUpdate(CamelModel):
     status: UserStatus
+
+
+class UserSelfUpdate(CamelModel):
+    """Profile fields a user may edit on their own account."""
+
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = Field(default=None, max_length=255)

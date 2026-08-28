@@ -168,11 +168,6 @@ export default function CoursesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Courses</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {isAuthor
-              ? "Courses you own. Other authors' courses are filtered out by the backend."
-              : "Published courses. Drafts are never returned to learners."}
-          </p>
         </div>
 
         {isAuthor && (
@@ -258,18 +253,29 @@ export default function CoursesPage() {
           />
         </div>
 
-        <select
-          value={category}
-          onChange={(event) => setCategory(event.target.value)}
-          className="rounded-xl border border-slate-300 px-3.5 py-2.5 text-sm text-slate-700 focus:border-[#0A6847] focus:outline-none focus:ring-2 focus:ring-[#0A6847]/20"
-        >
-          <option value="">All categories</option>
-          {categories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="appearance-none rounded-xl border border-slate-300 pl-3.5 pr-9 py-2.5 text-sm text-slate-700 focus:border-[#0A6847] focus:outline-none focus:ring-2 focus:ring-[#0A6847]/20"
+          >
+            <option value="">All categories</option>
+            {categories.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+          <svg
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
 
         {hasFilters && (
           <button
@@ -381,6 +387,25 @@ export default function CoursesPage() {
                         Archive
                       </button>
                     </>
+                  )}
+
+                  {course.status === "ARCHIVED" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          confirm(
+                            "Delete this archived course permanently? " +
+                              "This cannot be undone.",
+                          )
+                        ) {
+                          deleteCourse.mutate(course.id);
+                        }
+                      }}
+                      className="btn-danger-sm"
+                    >
+                      Delete
+                    </button>
                   )}
                 </div>
               </div>

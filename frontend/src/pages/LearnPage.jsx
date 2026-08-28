@@ -327,8 +327,13 @@ export default function LearnPage() {
                       {selectedContent.contentBody}
                     </p>
                   ) : (
-                    <div className="mt-4">
+                    <div className="mt-4 space-y-4">
                       <VideoPlayer video={selectedContent.video} title={selectedContent.title} />
+                      {selectedContent.description && (
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                          {selectedContent.description}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

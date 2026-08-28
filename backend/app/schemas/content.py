@@ -39,6 +39,7 @@ class ContentCreate(CamelModel):
     content_type: ContentType
     content_body: str | None = None
     video_url: str | None = Field(default=None, max_length=1000)
+    description: str | None = None
     display_order: int | None = Field(default=None, ge=1)
 
     @field_validator("video_url")
@@ -61,6 +62,7 @@ class ContentUpdate(CamelModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     content_body: str | None = None
     video_url: str | None = Field(default=None, max_length=1000)
+    description: str | None = None
     display_order: int | None = Field(default=None, ge=1)
 
     @field_validator("video_url")
@@ -80,6 +82,7 @@ class ContentRead(CamelModel):
     content_type: ContentType
     content_body: str | None
     video_url: str | None
+    description: str | None
     display_order: int
     created_at: datetime
     updated_at: datetime
@@ -99,6 +102,7 @@ class ContentLearnerRead(CamelModel):
     content_type: ContentType
     content_body: str | None
     video_url: str | None
+    description: str | None
     display_order: int
     completed: bool
 
