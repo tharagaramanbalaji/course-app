@@ -49,19 +49,8 @@ export default function RootLayout() {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           {/* Brand Logo */}
-          <Link to="/" className="flex items-center gap-2 group transition-transform hover:scale-[1.02]">
-            <img
-              src="/logo.png"
-              alt="Learn Flow Logo"
-              className="h-10 w-auto object-contain"
-              onError={(e) => {
-                // Fallback text logo if image not available
-                e.target.style.display = "none";
-              }}
-            />
-            <span className="text-xl font-extrabold tracking-tight text-slate-900 group-hover:text-brand-600 transition-colors">
-              Learn<span className="text-brand-600">Flow</span>
-            </span>
+          <Link to="/" className="flex items-center transition-transform hover:scale-[1.03]">
+            <img src="/logo.png" alt="LearnFlow" className="h-11 w-auto object-contain" />
           </Link>
 
           {/* Center Pill Nav Bar */}
