@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import { api, getApiErrorMessage, getApiErrorProblems } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import ConfirmModal from "@/components/ConfirmModal";
 import ErrorNote from "@/components/ErrorNote";
 import { containerStaggerVariants, dropdownVariants, itemFadeUpVariants } from "@/utils/motion";
 
@@ -129,7 +130,16 @@ export default function CoursesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState("");
-  const [problems, setProblems] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmLabel: "Confirm",
+    variant: "danger",
+    onConfirm: () => {},
+  });
+
+  const closeConfirmModal = () => setConfirmModal((prev) => ({ ...prev, isOpen: false }));
 
   const [searchInput, setSearchInput] = useState("");
   const [category, setCategory] = useState("");
@@ -474,15 +484,18 @@ export default function CoursesPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (
-                            confirm(
-                              "Unpublish this course so you can edit it? " +
-                                "It leaves the catalogue and new learners can't self-enrol " +
-                                "until you republish. Learners already enrolled keep their access.",
-                            )
-                          ) {
-                            unpublishCourse.mutate(course.id);
-                          }
+                          setConfirmModal({
+                            isOpen: true,
+                            title: "Unpublish Course?",
+                            description:
+                              "Unpublishing removes this course from the catalogue so you can edit it. New learners won't be able to self-enrol until republished, but existing enrolled learners keep access.",
+                            confirmLabel: "Unpublish",
+                            variant: "warning",
+                            onConfirm: () => {
+                              unpublishCourse.mutate(course.id);
+                              closeConfirmModal();
+                            },
+                          });
                         }}
                         className="btn-secondary-sm"
                       >
@@ -491,14 +504,18 @@ export default function CoursesPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (
-                            confirm(
-                              "Archive this course? It leaves the catalogue permanently. " +
-                                "Certificates and learner history are kept, but this can't be undone.",
-                            )
-                          ) {
-                            archiveCourse.mutate(course.id);
-                          }
+                          setConfirmModal({
+                            isOpen: true,
+                            title: "Archive Course?",
+                            description:
+                              "Archiving permanently removes this course from the catalogue. Learner history and certificates are retained.",
+                            confirmLabel: "Archive",
+                            variant: "danger",
+                            onConfirm: () => {
+                              archiveCourse.mutate(course.id);
+                              closeConfirmModal();
+                            },
+                          });
                         }}
                         className="btn-danger-sm"
                       >
@@ -511,14 +528,18 @@ export default function CoursesPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (
-                          confirm(
-                            "Delete this archived course permanently? " +
-                              "This cannot be undone.",
-                          )
-                        ) {
-                          deleteCourse.mutate(course.id);
-                        }
+                        setConfirmModal({
+                          isOpen: true,
+                          title: "Delete Course Permanently?",
+                          description:
+                            "This action cannot be undone. All course modules, lessons, and metadata will be permanently deleted.",
+                          confirmLabel: "Delete Course",
+                          variant: "danger",
+                          onConfirm: () => {
+                            deleteCourse.mutate(course.id);
+                            closeConfirmModal();
+                          },
+                        });
                       }}
                       className="btn-danger-sm"
                     >
@@ -562,6 +583,16 @@ export default function CoursesPage() {
           </p>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }

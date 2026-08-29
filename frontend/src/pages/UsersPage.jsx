@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { api, getApiErrorMessage } from "@/api/client";
+import ConfirmModal from "@/components/ConfirmModal";
 import ErrorNote from "@/components/ErrorNote";
 
 const ROLES = ["ADMIN", "INSTRUCTOR", "USER"];
@@ -19,6 +20,15 @@ export default function UsersPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmLabel: "Confirm",
+    variant: "danger",
+    onConfirm: () => {},
+  });
+  const closeConfirmModal = () => setConfirmModal((prev) => ({ ...prev, isOpen: false }));
 
   const usersQuery = useQuery({
     queryKey: ["users", search],
@@ -216,13 +226,18 @@ export default function UsersPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (
-                          confirm(
-                            `Delete ${user.firstName} ${user.lastName}? This cannot be undone.`,
-                          )
-                        ) {
-                          deleteUser.mutate(user.id);
-                        }
+                        setConfirmModal({
+                          isOpen: true,
+                          title: `Delete user "${user.firstName} ${user.lastName}"?`,
+                          description:
+                            "This action cannot be undone. All enrollments and user activity records for this account will be removed.",
+                          confirmLabel: "Delete User",
+                          variant: "danger",
+                          onConfirm: () => {
+                            deleteUser.mutate(user.id);
+                            closeConfirmModal();
+                          },
+                        });
                       }}
                       className="text-sm font-medium text-red-600 hover:underline"
                     >
@@ -241,6 +256,16 @@ export default function UsersPage() {
           {pagination.total} user(s), page {pagination.page} of {pagination.totalPages || 1}
         </p>
       )}
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }

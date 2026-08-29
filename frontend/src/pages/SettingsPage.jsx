@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { api, getApiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import ConfirmModal from "@/components/ConfirmModal";
 import ErrorNote from "@/components/ErrorNote";
 
 function getInitials(firstName = "", lastName = "") {
@@ -16,6 +17,15 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmLabel: "Confirm",
+    variant: "danger",
+    onConfirm: () => {},
+  });
+  const closeConfirmModal = () => setConfirmModal((prev) => ({ ...prev, isOpen: false }));
 
   const meQuery = useQuery({
     queryKey: ["me"],
@@ -59,13 +69,18 @@ export default function SettingsPage() {
   }
 
   function handleDelete() {
-    if (
-      confirm(
-        "Are you sure you want to delete your account? This action cannot be undone.",
-      )
-    ) {
-      deleteAccount.mutate();
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Account Permanently?",
+      description:
+        "Are you sure you want to delete your account? This action cannot be undone. All personal data and course progress will be permanently erased.",
+      confirmLabel: "Delete Account",
+      variant: "danger",
+      onConfirm: () => {
+        deleteAccount.mutate();
+        closeConfirmModal();
+      },
+    });
   }
 
   return (
@@ -184,6 +199,16 @@ export default function SettingsPage() {
           {deleteAccount.isPending ? "Deleting..." : "Delete account"}
         </button>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }

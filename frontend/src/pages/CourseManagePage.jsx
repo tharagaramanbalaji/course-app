@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api, getApiErrorMessage, getApiErrorProblems } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import ConfirmModal from "@/components/ConfirmModal";
 import ErrorNote from "@/components/ErrorNote";
 import LearnerPreviewModal from "@/components/LearnerPreviewModal";
 import ModuleQuizPanel from "@/components/ModuleQuizPanel";
@@ -55,6 +56,16 @@ export default function CourseManagePage() {
     description: "",
   });
   const [editingContent, setEditingContent] = useState(null); // { id, moduleId, title, contentBody, videoUrl, description }
+
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: "",
+    description: "",
+    confirmLabel: "Confirm",
+    variant: "danger",
+    onConfirm: () => {},
+  });
+  const closeConfirmModal = () => setConfirmModal((prev) => ({ ...prev, isOpen: false }));
 
   function reportError(mutationError) {
     setError(getApiErrorMessage(mutationError));
@@ -380,9 +391,17 @@ export default function CourseManagePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (confirm("Are you sure you want to delete this draft course?")) {
-                        deleteCourse.mutate();
-                      }
+                      setConfirmModal({
+                        isOpen: true,
+                        title: "Delete Draft Course?",
+                        description: "Are you sure you want to delete this draft course? All associated modules and lessons will be removed.",
+                        confirmLabel: "Delete Draft Course",
+                        variant: "danger",
+                        onConfirm: () => {
+                          deleteCourse.mutate();
+                          closeConfirmModal();
+                        },
+                      });
                     }}
                     disabled={deleteCourse.isPending}
                     className="btn-danger"
@@ -397,15 +416,18 @@ export default function CourseManagePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (
-                        confirm(
-                          "Unpublish this course so you can edit it? " +
-                            "It leaves the catalogue and new learners can't self-enrol " +
-                            "until you republish. Learners already enrolled keep their access.",
-                        )
-                      ) {
-                        unpublishCourse.mutate();
-                      }
+                      setConfirmModal({
+                        isOpen: true,
+                        title: "Unpublish Course?",
+                        description:
+                          "Unpublishing removes this course from the catalogue so you can edit it. New learners won't be able to self-enrol until republished, but existing enrolled learners keep access.",
+                        confirmLabel: "Unpublish",
+                        variant: "warning",
+                        onConfirm: () => {
+                          unpublishCourse.mutate();
+                          closeConfirmModal();
+                        },
+                      });
                     }}
                     disabled={unpublishCourse.isPending}
                     className="btn-secondary"
@@ -415,14 +437,18 @@ export default function CourseManagePage() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (
-                        confirm(
-                          "Archive this course? It leaves the catalogue permanently. " +
-                            "Certificates and learner history are kept, but this can't be undone.",
-                        )
-                      ) {
-                        archiveCourse.mutate();
-                      }
+                      setConfirmModal({
+                        isOpen: true,
+                        title: "Archive Course?",
+                        description:
+                          "Archiving permanently removes this course from the catalogue. Learner history and certificates are retained.",
+                        confirmLabel: "Archive",
+                        variant: "danger",
+                        onConfirm: () => {
+                          archiveCourse.mutate();
+                          closeConfirmModal();
+                        },
+                      });
                     }}
                     disabled={archiveCourse.isPending}
                     className="btn-danger"
@@ -536,10 +562,21 @@ export default function CourseManagePage() {
               setContentForm={setContentForm}
               editingContent={editingContent}
               setEditingContent={setEditingContent}
+              setConfirmModal={setConfirmModal}
             />
           ))}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+        confirmLabel={confirmModal.confirmLabel}
+        variant={confirmModal.variant}
+      />
     </div>
   );
 }
@@ -557,6 +594,7 @@ function ModuleCard({
   setEditModuleForm,
   handleUpdateModule,
   deleteModule,
+  setConfirmModal,
   handleMoveModule,
   reportError,
   clearError,
@@ -756,9 +794,17 @@ function ModuleCard({
                 <button
                   type="button"
                   onClick={() => {
-                    if (confirm(`Delete module "${module.title}"?`)) {
-                      deleteModule.mutate(module.id);
-                    }
+                    setConfirmModal({
+                      isOpen: true,
+                      title: `Delete module "${module.title}"?`,
+                      description: "Deleting this module will also remove all lessons and quiz content inside it.",
+                      confirmLabel: "Delete Module",
+                      variant: "danger",
+                      onConfirm: () => {
+                        deleteModule.mutate(module.id);
+                        closeConfirmModal();
+                      },
+                    });
                   }}
                   className="btn-danger-sm"
                 >
@@ -1032,9 +1078,17 @@ function ModuleCard({
                         <button
                           type="button"
                           onClick={() => {
-                            if (confirm(`Delete content "${item.title}"?`)) {
-                              deleteContent.mutate(item.id);
-                            }
+                            setConfirmModal({
+                              isOpen: true,
+                              title: `Delete content "${item.title}"?`,
+                              description: "This lesson content will be permanently removed from the module.",
+                              confirmLabel: "Delete Content",
+                              variant: "danger",
+                              onConfirm: () => {
+                                deleteContent.mutate(item.id);
+                                closeConfirmModal();
+                              },
+                            });
                           }}
                           className="rounded-lg border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
                         >
