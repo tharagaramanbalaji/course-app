@@ -102,24 +102,6 @@ export default function AddContentModal({
                 onChange={setVideoUrl}
               />
 
-              {parsedVideo && (
-                <div className="rounded-xl border border-slate-200 bg-slate-900 p-3 shadow-md">
-                  <div className="flex items-center justify-between pb-2">
-                    <span className="text-xs font-semibold text-slate-300">
-                      Live Video Preview ({parsedVideo.provider})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setShowPreview(!showPreview)}
-                      className="text-xs font-semibold text-slate-400 hover:text-white"
-                    >
-                      {showPreview ? "Hide Preview" : "Show Preview"}
-                    </button>
-                  </div>
-                  {showPreview && <VideoPlayer video={parsedVideo} title={title || "Lesson Video"} />}
-                </div>
-              )}
-
               <label className="block">
                 <span className="label-field">Video Description / Summary (Optional)</span>
                 <textarea

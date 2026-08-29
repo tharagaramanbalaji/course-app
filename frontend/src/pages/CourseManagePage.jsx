@@ -728,15 +728,6 @@ export default function CourseManagePage() {
                         disabled={!isDraft}
                       />
 
-                      {parseVideoUrl(lessonEditForm.videoUrl) && (
-                        <div className="rounded-xl border border-slate-200 bg-slate-900 p-3 shadow-md">
-                          <span className="text-[11px] font-bold text-slate-300 block mb-2">
-                            Live Video Player Preview
-                          </span>
-                          <VideoPlayer video={parseVideoUrl(lessonEditForm.videoUrl)} title={lessonEditForm.title} />
-                        </div>
-                      )}
-
                       <label className="block">
                         <span className="label-field">Video Description / Objectives</span>
                         <textarea
