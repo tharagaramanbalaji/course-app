@@ -4,8 +4,13 @@
 
 @layer base {
   body {
-    @apply font-sans antialiased bg-[#FAFBF9] text-slate-900 selection:bg-brand-100 selection:text-brand-900;
+    @apply antialiased bg-[#FAFBF9] text-slate-900 selection:bg-brand-100 selection:text-brand-900;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
+}
+
+.font-brand-logo {
+  font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
 }
 
 @layer components {
@@ -47,19 +52,19 @@
 
   /* Badges */
   .badge {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold;
+    @apply inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold;
   }
   .badge-brand {
-    @apply inline-flex items-center rounded-full bg-[#E8F5E9] px-2.5 py-0.5 text-xs font-semibold text-[#0A6847];
+    @apply inline-flex items-center rounded-md bg-[#E8F5E9] px-2.5 py-0.5 text-xs font-semibold text-[#0A6847] border border-[#0A6847]/15;
   }
   .badge-amber {
-    @apply inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800;
+    @apply inline-flex items-center rounded-md bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 border border-amber-200;
   }
   .badge-slate {
-    @apply inline-flex items-center rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700;
+    @apply inline-flex items-center rounded-md bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 border border-slate-200;
   }
   .badge-red {
-    @apply inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-semibold text-red-700;
+    @apply inline-flex items-center rounded-md bg-red-50 px-2.5 py-0.5 text-xs font-semibold text-red-700 border border-red-200;
   }
 }
 
@@ -75,25 +80,57 @@
 
 ::-webkit-scrollbar-thumb {
   background: #CBD5E1;
-  border-radius: 9999px;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
 
-/* Glassmorphism & Pill effects */
-.nav-pill-container {
-  background: rgba(122, 186, 120, 0.22);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(122, 186, 120, 0.35);
-}
-
 .brand-gradient {
-  background: linear-gradient(135deg, #0A6847 0%, #15803D 50%, #7ABA78 100%);
+  background: linear-gradient(135deg, #042A1C 0%, #0A6847 60%, #15803D 100%);
 }
 
 .brand-gradient-subtle {
   background: linear-gradient(135deg, rgba(10, 104, 71, 0.05) 0%, rgba(122, 186, 120, 0.12) 100%);
+}
+
+/* Dark Emerald Neumorphic / Tactile Utilities */
+.neu-panel {
+  background: #042417;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.neu-card {
+  background: #06301e;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  transition: all 0.2s ease;
+}
+
+.neu-card:hover {
+  background: #083924;
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.neu-inset {
+  background: #031b11;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.neu-stat {
+  background: #06301e;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.neu-divider {
+  border-right: 1px solid rgba(0, 0, 0, 0.35);
 }

@@ -1,4 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -6,6 +7,7 @@ import { api, getApiErrorMessage } from "@/api/client";
 import ErrorNote from "@/components/ErrorNote";
 import LearnerQuizPanel from "@/components/LearnerQuizPanel";
 import VideoPlayer from "@/components/VideoPlayer";
+import { tabContentVariants } from "@/utils/motion";
 
 const STATUS_BADGE = {
   NOT_STARTED: "badge-slate",
@@ -232,17 +234,16 @@ export default function LearnPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-bold text-slate-900">{course.title}</h2>
-          <span className="badge-brand">Course</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="hidden items-center gap-2 sm:flex">
-            <div className="h-1.5 w-40 overflow-hidden rounded-full bg-slate-100">
+            <div className="h-2 w-48 overflow-hidden rounded-md bg-slate-100">
               <div
-                className="h-full rounded-full bg-[#0A6847]"
+                className="h-full rounded-md bg-[#0A6847]"
                 style={{ width: `${course.progress.percentComplete}%` }}
               />
             </div>
-            <span className="text-xs text-slate-500">{course.progress.percentComplete}%</span>
+            <span className="text-xs font-semibold text-slate-600">{course.progress.percentComplete}%</span>
           </div>
           <button
             type="button"
@@ -279,77 +280,90 @@ export default function LearnPage() {
           {!selectedModule && <p className="text-slate-500">Select a lesson to begin.</p>}
 
           {selectedModule && (
-            <>
-              <div>
-                <p className="label-field">
-                  Module {selectedModule.displayOrder}: {selectedModule.title}
-                </p>
-              </div>
-
-              {effectiveSelection?.type === "content" && selectedContent && (
-                <div className="card">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <span
-                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                          selectedContent.contentType === "VIDEO"
-                            ? "bg-sky-100 text-sky-700"
-                            : "bg-violet-100 text-violet-700"
-                        }`}
-                      >
-                        {selectedContent.contentType}
-                      </span>
-                      <h3 className="mt-1.5 text-lg font-bold text-slate-900">
-                        {selectedContent.title}
-                      </h3>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={selectedContent.completed || completeContent.isPending}
-                      onClick={() =>
-                        completeContent.mutate({
-                          moduleId: selectedModule.id,
-                          contentId: selectedContent.id,
-                        })
-                      }
-                      className={
-                        selectedContent.completed
-                          ? "badge-brand shrink-0 px-3 py-1.5"
-                          : "btn-primary-sm shrink-0"
-                      }
-                    >
-                      {selectedContent.completed ? "✓ Completed" : "Mark complete"}
-                    </button>
-                  </div>
-
-                  {selectedContent.contentType === "TEXT" ? (
-                    <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                      {selectedContent.contentBody}
-                    </p>
-                  ) : (
-                    <div className="mt-4 space-y-4">
-                      <VideoPlayer video={selectedContent.video} title={selectedContent.title} />
-                      {selectedContent.description && (
-                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                          {selectedContent.description}
-                        </p>
-                      )}
-                    </div>
-                  )}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={
+                  effectiveSelection?.type === "content"
+                    ? `content-${selectedContent?.id}`
+                    : `quiz-${selectedModule.id}`
+                }
+                variants={tabContentVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                className="space-y-4"
+              >
+                <div>
+                  <p className="label-field">
+                    Module {selectedModule.displayOrder}: {selectedModule.title}
+                  </p>
                 </div>
-              )}
 
-              {effectiveSelection?.type === "quiz" && (
-                <LearnerQuizPanel
-                  key={selectedModule.id}
-                  courseId={courseId}
-                  module={selectedModule}
-                  onProgress={() => {
-                    queryClient.invalidateQueries({ queryKey: ["course-certificate", courseId] });
-                  }}
-                />
-              )}
-            </>
+                {effectiveSelection?.type === "content" && selectedContent && (
+                  <div className="card">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <span
+                          className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                            selectedContent.contentType === "VIDEO"
+                              ? "bg-sky-100 text-sky-700"
+                              : "bg-violet-100 text-violet-700"
+                          }`}
+                        >
+                          {selectedContent.contentType}
+                        </span>
+                        <h3 className="mt-1.5 text-lg font-bold text-slate-900">
+                          {selectedContent.title}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={selectedContent.completed || completeContent.isPending}
+                        onClick={() =>
+                          completeContent.mutate({
+                            moduleId: selectedModule.id,
+                            contentId: selectedContent.id,
+                          })
+                        }
+                        className={
+                          selectedContent.completed
+                            ? "badge-brand shrink-0 px-3 py-1.5"
+                            : "btn-primary-sm shrink-0"
+                        }
+                      >
+                        {selectedContent.completed ? "✓ Completed" : "Mark complete"}
+                      </button>
+                    </div>
+
+                    {selectedContent.contentType === "TEXT" ? (
+                      <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                        {selectedContent.contentBody}
+                      </p>
+                    ) : (
+                      <div className="mt-4 space-y-4">
+                        <VideoPlayer video={selectedContent.video} title={selectedContent.title} />
+                        {selectedContent.description && (
+                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
+                            {selectedContent.description}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {effectiveSelection?.type === "quiz" && (
+                  <LearnerQuizPanel
+                    key={selectedModule.id}
+                    courseId={courseId}
+                    module={selectedModule}
+                    onProgress={() => {
+                      queryClient.invalidateQueries({ queryKey: ["course-certificate", courseId] });
+                    }}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           )}
         </div>
 
@@ -478,8 +492,14 @@ export default function LearnPage() {
                             <span className="h-4 w-4 shrink-0 rounded-full border-2 border-slate-300" />
                           )}
                           <span className="min-w-0 flex-1 truncate">Module Quiz</span>
-                          <span className={`shrink-0 ${STATUS_BADGE[module.status]}`}>
-                            {STATUS_LABEL[module.status]}
+                          <span className="shrink-0 text-xs font-medium">
+                            {module.quizPassed ? (
+                              <span className="text-[#0A6847] font-semibold">Passed</span>
+                            ) : module.status === "IN_PROGRESS" ? (
+                              <span className="text-amber-700 font-medium">In progress</span>
+                            ) : (
+                              <span className="text-slate-400">Not started</span>
+                            )}
                           </span>
                         </button>
                       )}
