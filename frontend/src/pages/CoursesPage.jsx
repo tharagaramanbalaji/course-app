@@ -130,6 +130,7 @@ export default function CoursesPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState("");
+  const [problems, setProblems] = useState([]);
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: "",
