@@ -24,20 +24,26 @@ function ActionCard({ to, title, description, cta, icon, badge }) {
   return (
     <Link
       to={to}
-      className="card flex flex-col justify-between transition hover:-translate-y-0.5 hover:border-[#7ABA78] hover:shadow-md p-6 group"
+      className="card flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 hover:border-[#0A6847]/40 hover:shadow-md p-6 group"
     >
       <div>
         <div className="flex items-center justify-between">
-          <div className="p-2.5 rounded-xl bg-[#E8F5E9] text-[#0A6847] group-hover:bg-[#0A6847] group-hover:text-white transition">
+          <div className="p-2.5 rounded-xl bg-[#E8F5E9] text-[#0A6847] group-hover:bg-[#0A6847] group-hover:text-white transition-colors duration-200">
             {icon}
           </div>
           {badge && <span className="badge-brand">{badge}</span>}
         </div>
-        <h3 className="mt-4 text-lg font-bold text-slate-900">{title}</h3>
+        <h3 className="mt-4 text-lg font-bold text-slate-900 group-hover:text-[#0A6847] transition-colors">{title}</h3>
         <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">{description}</p>
       </div>
-      <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#0A6847] group-hover:translate-x-1 transition-transform">
-        {cta} <span aria-hidden="true">&rarr;</span>
+      <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-[#0A6847]">
+        {cta}{" "}
+        <span
+          aria-hidden="true"
+          className="inline-block transition-transform duration-200 group-hover:translate-x-1.5"
+        >
+          &rarr;
+        </span>
       </span>
     </Link>
   );
