@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { api, getApiErrorMessage, getApiErrorProblems } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import AddContentModal from "@/components/AddContentModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import ErrorNote from "@/components/ErrorNote";
 import LearnerPreviewModal from "@/components/LearnerPreviewModal";
@@ -13,11 +14,53 @@ import VideoPlayer from "@/components/VideoPlayer";
 import VideoUrlInput from "@/components/VideoUrlInput";
 import { parseVideoUrl } from "@/lib/video";
 
-const STATUS_STYLES = {
-  DRAFT: "badge-amber",
-  PUBLISHED: "badge-brand",
-  ARCHIVED: "badge-slate",
-};
+function ClockIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+function ListIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <polygon points="9,6 19,12 9,18" fill="currentColor" />
+    </svg>
+  );
+}
+
+function DocumentIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  );
+}
+
+function QuizIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function estimateMinutes(item) {
+  if (!item) return 5;
+  if (item.contentType === "VIDEO") return 8;
+  const wordCount = (item.contentBody || "").trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(3, Math.ceil(wordCount / 120));
+}
 
 export default function CourseManagePage() {
   const { courseId } = useParams();
@@ -27,36 +70,23 @@ export default function CourseManagePage() {
 
   const [error, setError] = useState("");
   const [problems, setProblems] = useState([]);
-
-  // Edit course state
-  const [isEditingCourse, setIsEditingCourse] = useState(false);
-  const [courseForm, setCourseForm] = useState({
-    title: "",
-    description: "",
-    category: "",
-    allowSelfEnrollment: false,
-  });
-
-  // Learner Preview state
   const [showLearnerPreview, setShowLearnerPreview] = useState(false);
-
-  // Module creation/edit state
   const [showAddModule, setShowAddModule] = useState(false);
-  const [moduleForm, setModuleForm] = useState({ title: "", description: "" });
-  const [editingModuleId, setEditingModuleId] = useState(null);
-  const [editModuleForm, setEditModuleForm] = useState({ title: "", description: "" });
+  const [addContentModule, setAddContentModule] = useState(null); // { id, title }
 
-  // Content creation/edit state per module
-  const [addingContentModuleId, setAddingContentModuleId] = useState(null);
-  const [contentForm, setContentForm] = useState({
-    title: "",
-    contentType: "TEXT",
-    contentBody: "",
-    videoUrl: "",
-    description: "",
-  });
-  const [editingContent, setEditingContent] = useState(null); // { id, moduleId, title, contentBody, videoUrl, description }
+  // Active Studio Selection State: { type: 'content' | 'quiz' | 'module', moduleId, contentId? }
+  const [activeSelection, setActiveSelection] = useState(null);
+  const [workspaceTab, setWorkspaceTab] = useState("edit"); // "edit" | "preview"
+  const [playlistSearch, setPlaylistSearch] = useState("");
+  const [expandedModules, setExpandedModules] = useState({});
 
+  // Editing form states for active item
+  const [lessonEditForm, setLessonEditForm] = useState({ title: "", contentType: "TEXT", contentBody: "", videoUrl: "", description: "" });
+  const [moduleEditForm, setModuleEditForm] = useState({ title: "", description: "" });
+  const [editCourseDetailsModal, setEditCourseDetailsModal] = useState(false);
+  const [courseDetailsForm, setCourseDetailsForm] = useState({ title: "", description: "", category: "", allowSelfEnrollment: false });
+
+  // Modal confirm state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: "",
@@ -77,34 +107,78 @@ export default function CourseManagePage() {
     setProblems([]);
   }
 
-  // Fetch Course details
+  // --- Queries ---
   const courseQuery = useQuery({
-    queryKey: ["course", courseId],
-    queryFn: async () => (await api.get(`/courses/${courseId}`)).data,
+    queryKey: ["course-manage", courseId],
+    queryFn: async () => (await api.get(`/courses/${courseId}`)).data.data,
   });
 
-  // Fetch Modules
   const modulesQuery = useQuery({
-    queryKey: ["course-modules", courseId],
-    queryFn: async () => (await api.get(`/courses/${courseId}/modules`)).data,
+    queryKey: ["course-manage-modules", courseId],
+    queryFn: async () => (await api.get(`/courses/${courseId}/modules`)).data.data,
   });
 
+  const course = courseQuery.data;
+  const modules = useMemo(() => modulesQuery.data ?? [], [modulesQuery.data]);
+
+  // Sync course details form
+  useEffect(() => {
+    if (course) {
+      setCourseDetailsForm({
+        title: course.title || "",
+        description: course.description || "",
+        category: course.category || "",
+        allowSelfEnrollment: Boolean(course.allowSelfEnrollment),
+      });
+    }
+  }, [course]);
+
+  // Expand all modules by default
+  useEffect(() => {
+    if (modules.length > 0) {
+      const map = {};
+      modules.forEach((m) => {
+        map[m.id] = true;
+      });
+      setExpandedModules((prev) => ({ ...map, ...prev }));
+
+      // Set initial active item if none selected
+      if (!activeSelection && modules[0]) {
+        const firstModule = modules[0];
+        if (firstModule.contents && firstModule.contents.length > 0) {
+          const firstItem = firstModule.contents[0];
+          setActiveSelection({ type: "content", moduleId: firstModule.id, contentId: firstItem.id });
+          setLessonEditForm({
+            title: firstItem.title || "",
+            contentType: firstItem.contentType || "TEXT",
+            contentBody: firstItem.contentBody || "",
+            videoUrl: firstItem.videoUrl || "",
+            description: firstItem.description || "",
+          });
+        } else {
+          setActiveSelection({ type: "module", moduleId: firstModule.id });
+          setModuleEditForm({ title: firstModule.title || "", description: firstModule.description || "" });
+        }
+      }
+    }
+  }, [modules, activeSelection]);
+
+  // --- Mutations ---
   const refreshCourse = () => {
-    queryClient.invalidateQueries({ queryKey: ["course", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["course-manage", courseId] });
     queryClient.invalidateQueries({ queryKey: ["courses"] });
   };
 
   const refreshModules = () => {
-    queryClient.invalidateQueries({ queryKey: ["course-modules", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["course-manage-modules", courseId] });
   };
 
-  // Course Mutations
-  const updateCourse = useMutation({
+  const updateCourseDetails = useMutation({
     mutationFn: (payload) => api.patch(`/courses/${courseId}`, payload),
     onSuccess: () => {
-      setIsEditingCourse(false);
       clearError();
       refreshCourse();
+      setEditCourseDetailsModal(false);
     },
     onError: reportError,
   });
@@ -114,14 +188,6 @@ export default function CourseManagePage() {
     onSuccess: () => {
       clearError();
       refreshCourse();
-    },
-    onError: reportError,
-  });
-
-  const deleteCourse = useMutation({
-    mutationFn: () => api.delete(`/courses/${courseId}`),
-    onSuccess: () => {
-      navigate("/courses");
     },
     onError: reportError,
   });
@@ -144,25 +210,11 @@ export default function CourseManagePage() {
     onError: reportError,
   });
 
-  // Module Mutations
-  const createModule = useMutation({
-    mutationFn: (payload) => api.post(`/courses/${courseId}/modules`, payload),
+  const deleteCourse = useMutation({
+    mutationFn: () => api.delete(`/courses/${courseId}`),
     onSuccess: () => {
-      setShowAddModule(false);
-      setModuleForm({ title: "", description: "" });
-      clearError();
-      refreshModules();
-    },
-    onError: reportError,
-  });
-
-  const updateModule = useMutation({
-    mutationFn: ({ moduleId, payload }) =>
-      api.patch(`/courses/${courseId}/modules/${moduleId}`, payload),
-    onSuccess: () => {
-      setEditingModuleId(null);
-      clearError();
-      refreshModules();
+      queryClient.invalidateQueries({ queryKey: ["courses"] });
+      navigate("/courses");
     },
     onError: reportError,
   });
@@ -172,13 +224,13 @@ export default function CourseManagePage() {
     onSuccess: () => {
       clearError();
       refreshModules();
+      setActiveSelection(null);
     },
     onError: reportError,
   });
 
-  const reorderModules = useMutation({
-    mutationFn: (moduleIds) =>
-      api.patch(`/courses/${courseId}/modules/reorder`, { moduleIds }),
+  const updateModule = useMutation({
+    mutationFn: ({ moduleId, payload }) => api.patch(`/courses/${courseId}/modules/${moduleId}`, payload),
     onSuccess: () => {
       clearError();
       refreshModules();
@@ -186,53 +238,56 @@ export default function CourseManagePage() {
     onError: reportError,
   });
 
-  const course = courseQuery.data?.data;
-  const modules = modulesQuery.data?.data ?? [];
+  const reorderModules = useMutation({
+    mutationFn: (moduleIds) => api.patch(`/courses/${courseId}/modules/reorder`, { moduleIds }),
+    onSuccess: () => {
+      clearError();
+      refreshModules();
+    },
+    onError: reportError,
+  });
 
-  function startEditCourse() {
-    if (!course) return;
-    setCourseForm({
-      title: course.title || "",
-      description: course.description || "",
-      category: course.category || "",
-      allowSelfEnrollment: course.allowSelfEnrollment || false,
-    });
-    setIsEditingCourse(true);
-    clearError();
-  }
+  const addContent = useMutation({
+    mutationFn: ({ moduleId, payload }) => api.post(`/courses/${courseId}/modules/${moduleId}/contents`, payload),
+    onSuccess: (res, variables) => {
+      clearError();
+      refreshModules();
+      setAddContentModule(null);
+      const created = res.data?.data;
+      if (created) {
+        setActiveSelection({ type: "content", moduleId: variables.moduleId, contentId: created.id });
+        setLessonEditForm({
+          title: created.title || "",
+          contentType: created.contentType || "TEXT",
+          contentBody: created.contentBody || "",
+          videoUrl: created.videoUrl || "",
+          description: created.description || "",
+        });
+      }
+    },
+    onError: reportError,
+  });
 
-  function handleUpdateCourse(e) {
-    e.preventDefault();
-    clearError();
-    updateCourse.mutate({
-      title: courseForm.title,
-      description: courseForm.description,
-      category: courseForm.category || null,
-      allowSelfEnrollment: courseForm.allowSelfEnrollment,
-    });
-  }
+  const updateContent = useMutation({
+    mutationFn: ({ contentId, payload }) => api.patch(`/contents/${contentId}`, payload),
+    onSuccess: () => {
+      clearError();
+      refreshModules();
+    },
+    onError: reportError,
+  });
 
-  function handleCreateModule(e) {
-    e.preventDefault();
-    clearError();
-    createModule.mutate({
-      title: moduleForm.title,
-      description: moduleForm.description || null,
-    });
-  }
+  const deleteContent = useMutation({
+    mutationFn: (contentId) => api.delete(`/contents/${contentId}`),
+    onSuccess: () => {
+      clearError();
+      refreshModules();
+      setActiveSelection(null);
+    },
+    onError: reportError,
+  });
 
-  function handleUpdateModule(e, moduleId) {
-    e.preventDefault();
-    clearError();
-    updateModule.mutate({
-      moduleId,
-      payload: {
-        title: editModuleForm.title,
-        description: editModuleForm.description || null,
-      },
-    });
-  }
-
+  // --- Handlers ---
   function handleMoveModule(index, direction) {
     const targetIndex = index + direction;
     if (targetIndex < 0 || targetIndex >= modules.length) return;
@@ -242,15 +297,82 @@ export default function CourseManagePage() {
     reorderModules.mutate(reordered.map((m) => m.id));
   }
 
+  function handleSelectContent(module, item) {
+    setActiveSelection({ type: "content", moduleId: module.id, contentId: item.id });
+    setWorkspaceTab("edit");
+    setLessonEditForm({
+      title: item.title || "",
+      contentType: item.contentType || "TEXT",
+      contentBody: item.contentBody || "",
+      videoUrl: item.videoUrl || "",
+      description: item.description || "",
+    });
+    clearError();
+  }
+
+  function handleSelectModule(module) {
+    setActiveSelection({ type: "module", moduleId: module.id });
+    setModuleEditForm({
+      title: module.title || "",
+      description: module.description || "",
+    });
+    clearError();
+  }
+
+  function handleSelectQuiz(module) {
+    setActiveSelection({ type: "quiz", moduleId: module.id });
+    clearError();
+  }
+
+  function handleSaveLesson(e) {
+    e.preventDefault();
+    if (!activeSelection || activeSelection.type !== "content") return;
+    clearError();
+    updateContent.mutate({
+      contentId: activeSelection.contentId,
+      payload: {
+        title: lessonEditForm.title,
+        contentType: lessonEditForm.contentType,
+        contentBody: lessonEditForm.contentType === "TEXT" ? lessonEditForm.contentBody : null,
+        videoUrl: lessonEditForm.contentType === "VIDEO" ? lessonEditForm.videoUrl : null,
+        description: lessonEditForm.contentType === "VIDEO" ? lessonEditForm.description : null,
+      },
+    });
+  }
+
+  function handleSaveModule(e) {
+    e.preventDefault();
+    if (!activeSelection || activeSelection.type !== "module") return;
+    clearError();
+    updateModule.mutate({
+      moduleId: activeSelection.moduleId,
+      payload: {
+        title: moduleEditForm.title,
+        description: moduleEditForm.description || null,
+      },
+    });
+  }
+
+  function handleSaveCourseDetails(e) {
+    e.preventDefault();
+    clearError();
+    updateCourseDetails.mutate(courseDetailsForm);
+  }
+
   if (courseQuery.isPending) {
-    return <p className="text-slate-500">Loading course details...</p>;
+    return (
+      <div className="space-y-4">
+        <div className="h-44 w-full animate-pulse rounded-3xl bg-slate-200" />
+        <div className="h-64 w-full animate-pulse rounded-2xl bg-slate-100" />
+      </div>
+    );
   }
 
   if (courseQuery.isError || !course) {
     return (
       <div className="space-y-4">
-        <ErrorNote message={getApiErrorMessage(courseQuery.error) || "Course not found"} />
-        <Link to="/courses" className="text-sm font-medium text-slate-700 hover:underline">
+        <ErrorNote message={getApiErrorMessage(courseQuery.error) || "Course not found."} />
+        <Link to="/courses" className="text-sm font-semibold text-[#0A6847] hover:underline">
           &larr; Back to Courses
         </Link>
       </div>
@@ -258,211 +380,758 @@ export default function CourseManagePage() {
   }
 
   const isDraft = course.status === "DRAFT";
+  const searchFilter = playlistSearch.trim().toLowerCase();
+
+  // Selected item lookup
+  const activeModule = modules.find((m) => m.id === activeSelection?.moduleId);
+  const activeContent = activeModule?.contents?.find((c) => c.id === activeSelection?.contentId);
+
+  // Total estimated course duration
+  const totalMinutes = modules.reduce((sum, module) => {
+    const contents = module.contents || [];
+    return sum + contents.reduce((s, c) => s + estimateMinutes(c), 0);
+  }, 0);
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header breadcrumb & top nav */}
-      <div className="flex items-center justify-between">
-        <Link
-          to="/courses"
-          className="inline-flex items-center gap-1 text-sm font-medium text-slate-600 hover:text-slate-900"
-        >
-          &larr; Back to Courses
-        </Link>
-        <span className={`${STATUS_STYLES[course.status]} uppercase tracking-wide`}>
-          {course.status}
-        </span>
+    <div className="space-y-6 pb-12">
+      {/* Studio Banner */}
+      <div className="relative overflow-hidden rounded-3xl brand-gradient p-8 text-white sm:p-10 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <Link
+            to="/courses"
+            className="inline-flex items-center gap-1.5 text-xs font-bold tracking-wide uppercase text-white/80 hover:text-white transition"
+          >
+            &uarr; Back to Catalogue
+          </Link>
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold uppercase tracking-wider ${
+                course.status === "PUBLISHED"
+                  ? "bg-emerald-400/20 text-emerald-200 border border-emerald-400/30"
+                  : "bg-amber-400/20 text-amber-200 border border-amber-400/30"
+              }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${course.status === "PUBLISHED" ? "bg-emerald-400" : "bg-amber-400"}`} />
+              {course.status}
+            </span>
+          </div>
+        </div>
+
+        <h1 className="mt-4 max-w-3xl text-3xl font-extrabold tracking-tight sm:text-4xl">
+          {course.title}
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm text-white/80 leading-relaxed">
+          {course.description || "Course Authoring Studio — Organize modules, lessons, and quizzes."}
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-semibold text-white/85">
+          <span className="inline-flex items-center gap-1.5">
+            <ListIcon /> {modules.length} Modules
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <ClockIcon /> Est. {totalMinutes} mins total
+          </span>
+          {course.category && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-0.5 text-white">
+              Category: {course.category}
+            </span>
+          )}
+        </div>
+
+        {/* Studio Controls Header Bar */}
+        <div className="mt-8 flex flex-wrap items-center gap-3 pt-4 border-t border-white/15">
+          <button
+            type="button"
+            onClick={() => setShowLearnerPreview(true)}
+            className="rounded-xl bg-white/15 px-4 py-2 text-xs font-bold text-white hover:bg-white/25 transition backdrop-blur-xs flex items-center gap-2"
+          >
+            👁️ Learner Preview Mode
+          </button>
+
+          {isAuthor && (
+            <button
+              type="button"
+              onClick={() => setEditCourseDetailsModal(true)}
+              className="rounded-xl bg-white/15 px-4 py-2 text-xs font-bold text-white hover:bg-white/25 transition backdrop-blur-xs"
+            >
+              ⚙️ Course Settings
+            </button>
+          )}
+
+          {isAuthor && isDraft && (
+            <button
+              type="button"
+              onClick={() => publishCourse.mutate()}
+              disabled={publishCourse.isPending}
+              className="rounded-xl bg-white text-[#0A6847] px-4 py-2 text-xs font-extrabold hover:bg-emerald-50 transition shadow-md disabled:opacity-50"
+            >
+              {publishCourse.isPending ? "Publishing..." : "✓ Publish Course"}
+            </button>
+          )}
+
+          {isAuthor && course.status === "PUBLISHED" && (
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmModal({
+                  isOpen: true,
+                  title: "Unpublish Course?",
+                  description:
+                    "Unpublishing removes this course from the catalogue so you can edit content. Existing enrolled learners keep access.",
+                  confirmLabel: "Unpublish",
+                  variant: "warning",
+                  onConfirm: () => {
+                    unpublishCourse.mutate();
+                    closeConfirmModal();
+                  },
+                });
+              }}
+              disabled={unpublishCourse.isPending}
+              className="rounded-xl bg-amber-500/20 text-amber-200 border border-amber-400/30 px-4 py-2 text-xs font-bold hover:bg-amber-500/30 transition"
+            >
+              {unpublishCourse.isPending ? "Unpublishing..." : "Unpublish to Edit"}
+            </button>
+          )}
+
+          {isAuthor && (
+            <button
+              type="button"
+              onClick={() => {
+                setConfirmModal({
+                  isOpen: true,
+                  title: "Delete Course?",
+                  description: "Are you sure you want to delete this course? All modules, lessons, and quizzes will be permanently removed.",
+                  confirmLabel: "Delete Course",
+                  variant: "danger",
+                  onConfirm: () => {
+                    deleteCourse.mutate();
+                    closeConfirmModal();
+                  },
+                });
+              }}
+              className="ml-auto text-xs font-bold text-red-200 hover:text-white underline transition"
+            >
+              Delete Course
+            </button>
+          )}
+        </div>
+
+        <div className="pointer-events-none absolute -right-10 -top-10 h-56 w-56 rounded-full bg-white/10" />
       </div>
 
       <ErrorNote message={error} problems={problems} />
 
-      {/* Course Detail / Editor Header */}
-      <div className="card">
-        {isEditingCourse ? (
-          <form onSubmit={handleUpdateCourse} className="space-y-4">
-            <h3 className="text-lg font-medium">Edit Course Details</h3>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Title</span>
-                <input
-                  required
-                  value={courseForm.title}
-                  onChange={(e) => setCourseForm({ ...courseForm, title: e.target.value })}
-                  className="input-field mt-1"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-medium text-slate-700">Category</span>
-                <input
-                  value={courseForm.category}
-                  onChange={(e) => setCourseForm({ ...courseForm, category: e.target.value })}
-                  className="input-field mt-1"
-                />
-              </label>
+      {/* Main Studio 2-Column Grid */}
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Left Column: Interactive Studio Workspace Pane (7 cols) */}
+        <div className="lg:col-span-7 space-y-4">
+          {!activeSelection ? (
+            <div className="card-flush p-12 text-center text-slate-500 space-y-3">
+              <p className="text-sm font-semibold">Select a module, lesson, or quiz from the curriculum playlist to start editing.</p>
+              {isAuthor && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddModule(true)}
+                  className="btn-primary-sm"
+                >
+                  + Add First Module
+                </button>
+              )}
             </div>
-
-            <label className="block">
-              <span className="text-sm font-medium text-slate-700">Description</span>
-              <textarea
-                required
-                rows={3}
-                value={courseForm.description}
-                onChange={(e) =>
-                  setCourseForm({ ...courseForm, description: e.target.value })
-                }
-                className="input-field mt-1"
-              />
-            </label>
-
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={courseForm.allowSelfEnrollment}
-                onChange={(e) =>
-                  setCourseForm({ ...courseForm, allowSelfEnrollment: e.target.checked })
-                }
-                className="rounded border-slate-300"
-              />
-              Allow self-enrollment by learners
-            </label>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={updateCourse.isPending}
-                className="btn-primary"
-              >
-                {updateCourse.isPending ? "Saving..." : "Save Changes"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsEditingCourse(false)}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">{course.title}</h1>
-                <p className="mt-1 text-slate-600">{course.description}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                  <span>Category: <strong>{course.category || "Uncategorised"}</strong></span>
-                  <span>
-                    Self Enrollment: <strong>{course.allowSelfEnrollment ? "Allowed" : "Admin Only"}</strong>
+          ) : activeSelection.type === "content" && activeContent ? (
+            /* LESSON STUDIO WORKSPACE */
+            <div className="card-flush space-y-6 p-6">
+              {/* Studio Stage Header & Mode Switcher */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                <div>
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#0A6847]">
+                    Chapter: {activeModule?.title}
                   </span>
-                  {course.publishedAt && (
-                    <span>
-                      Published: <strong>{new Date(course.publishedAt).toLocaleDateString()}</strong>
-                    </span>
-                  )}
+                  <h2 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                    {activeContent.title}
+                  </h2>
                 </div>
-              </div>
 
-              {isAuthor && isDraft && (
-                <div className="flex flex-wrap gap-2">
-                  {/* Learner Preview Action */}
+                <div className="flex items-center gap-1 rounded-xl bg-slate-100 p-1 text-xs font-bold">
                   <button
                     type="button"
-                    onClick={() => setShowLearnerPreview(true)}
-                    className="flex items-center gap-1.5 rounded-xl bg-[#7ABA78] px-3.5 py-1.5 text-sm font-semibold text-[#063F2A] transition hover:bg-[#5C9E5A] hover:text-white"
+                    onClick={() => setWorkspaceTab("edit")}
+                    className={`rounded-lg px-3 py-1.5 transition ${
+                      workspaceTab === "edit"
+                        ? "bg-white text-slate-900 shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    ✏️ Edit Studio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWorkspaceTab("preview")}
+                    className={`rounded-lg px-3 py-1.5 transition ${
+                      workspaceTab === "preview"
+                        ? "bg-white text-[#0A6847] shadow-xs"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
                   >
                     👁️ Learner Preview
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={startEditCourse}
-                    className="btn-secondary"
-                  >
-                    Edit Details
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => publishCourse.mutate()}
-                    disabled={publishCourse.isPending}
-                    className="btn-primary"
-                  >
-                    {publishCourse.isPending ? "Validating & Publishing..." : "Publish Course"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmModal({
-                        isOpen: true,
-                        title: "Delete Draft Course?",
-                        description: "Are you sure you want to delete this draft course? All associated modules and lessons will be removed.",
-                        confirmLabel: "Delete Draft Course",
-                        variant: "danger",
-                        onConfirm: () => {
-                          deleteCourse.mutate();
-                          closeConfirmModal();
-                        },
-                      });
-                    }}
-                    disabled={deleteCourse.isPending}
-                    className="btn-danger"
-                  >
-                    Delete Course
-                  </button>
                 </div>
-              )}
+              </div>
 
-              {isAuthor && course.status === "PUBLISHED" && (
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmModal({
-                        isOpen: true,
-                        title: "Unpublish Course?",
-                        description:
-                          "Unpublishing removes this course from the catalogue so you can edit it. New learners won't be able to self-enrol until republished, but existing enrolled learners keep access.",
-                        confirmLabel: "Unpublish",
-                        variant: "warning",
-                        onConfirm: () => {
-                          unpublishCourse.mutate();
-                          closeConfirmModal();
-                        },
-                      });
-                    }}
-                    disabled={unpublishCourse.isPending}
-                    className="btn-secondary"
-                  >
-                    {unpublishCourse.isPending ? "Unpublishing..." : "Unpublish to Edit"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setConfirmModal({
-                        isOpen: true,
-                        title: "Archive Course?",
-                        description:
-                          "Archiving permanently removes this course from the catalogue. Learner history and certificates are retained.",
-                        confirmLabel: "Archive",
-                        variant: "danger",
-                        onConfirm: () => {
-                          archiveCourse.mutate();
-                          closeConfirmModal();
-                        },
-                      });
-                    }}
-                    disabled={archiveCourse.isPending}
-                    className="btn-danger"
-                  >
-                    {archiveCourse.isPending ? "Archiving..." : "Archive Course"}
-                  </button>
+              {workspaceTab === "edit" ? (
+                /* EDIT LESSON CONTENT FORM */
+                <form onSubmit={handleSaveLesson} className="space-y-5">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <label className="block sm:col-span-2">
+                      <span className="label-field">Lesson Title *</span>
+                      <input
+                        required
+                        value={lessonEditForm.title}
+                        onChange={(e) => setLessonEditForm({ ...lessonEditForm, title: e.target.value })}
+                        disabled={!isDraft}
+                        className="input-field mt-1.5"
+                      />
+                    </label>
+
+                    <label className="block sm:col-span-1">
+                      <span className="label-field">Content Type</span>
+                      <select
+                        value={lessonEditForm.contentType}
+                        onChange={(e) => setLessonEditForm({ ...lessonEditForm, contentType: e.target.value })}
+                        disabled={!isDraft}
+                        className="input-field mt-1.5 font-bold text-slate-800"
+                      >
+                        <option value="TEXT">📄 Text Lesson</option>
+                        <option value="VIDEO">🎥 Video Lesson</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {lessonEditForm.contentType === "TEXT" ? (
+                    <label className="block">
+                      <span className="label-field">Lesson Body (Text / Markdown)</span>
+                      <textarea
+                        required
+                        rows={10}
+                        value={lessonEditForm.contentBody}
+                        onChange={(e) => setLessonEditForm({ ...lessonEditForm, contentBody: e.target.value })}
+                        disabled={!isDraft}
+                        className="input-field mt-1.5 font-mono text-sm leading-relaxed"
+                        placeholder="Write detailed lesson content, code snippets, or notes..."
+                      />
+                    </label>
+                  ) : (
+                    <div className="space-y-4">
+                      <VideoUrlInput
+                        id="studio-lesson-video-url"
+                        value={lessonEditForm.videoUrl}
+                        onChange={(url) => setLessonEditForm({ ...lessonEditForm, videoUrl: url })}
+                        disabled={!isDraft}
+                      />
+
+                      {parseVideoUrl(lessonEditForm.videoUrl) && (
+                        <div className="rounded-xl border border-slate-200 bg-slate-900 p-3 shadow-md">
+                          <span className="text-[11px] font-bold text-slate-300 block mb-2">
+                            Live Video Player Preview
+                          </span>
+                          <VideoPlayer video={parseVideoUrl(lessonEditForm.videoUrl)} title={lessonEditForm.title} />
+                        </div>
+                      )}
+
+                      <label className="block">
+                        <span className="label-field">Video Description / Objectives</span>
+                        <textarea
+                          rows={3}
+                          value={lessonEditForm.description}
+                          onChange={(e) => setLessonEditForm({ ...lessonEditForm, description: e.target.value })}
+                          disabled={!isDraft}
+                          className="input-field mt-1.5"
+                          placeholder="Brief summary of key concepts covered in this video..."
+                        />
+                      </label>
+                    </div>
+                  )}
+
+                  {isDraft && (
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmModal({
+                            isOpen: true,
+                            title: `Delete lesson "${activeContent.title}"?`,
+                            description: "This lesson content will be permanently removed.",
+                            confirmLabel: "Delete Lesson",
+                            variant: "danger",
+                            onConfirm: () => {
+                              deleteContent.mutate(activeContent.id);
+                              closeConfirmModal();
+                            },
+                          });
+                        }}
+                        className="text-xs font-bold text-red-600 hover:underline"
+                      >
+                        Delete Lesson
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={updateContent.isPending}
+                        className="btn-primary"
+                      >
+                        {updateContent.isPending ? "Saving..." : "Save Lesson Changes"}
+                      </button>
+                    </div>
+                  )}
+                </form>
+              ) : (
+                /* LEARNER PREVIEW WORKSPACE */
+                <div className="space-y-4 rounded-2xl bg-slate-50/50 p-6 border border-slate-200">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                    <span className="text-xs font-semibold text-slate-500">
+                      Learner Experience View &bull; {activeContent.contentType === "VIDEO" ? "Video Lesson" : "Text Lesson"}
+                    </span>
+                    <span className="badge-brand">● Unlocked</span>
+                  </div>
+
+                  {activeContent.contentType === "VIDEO" ? (
+                    <div className="space-y-4">
+                      {parseVideoUrl(activeContent.videoUrl) ? (
+                        <div className="rounded-2xl border border-slate-200 bg-slate-900 p-3 shadow-lg">
+                          <VideoPlayer video={parseVideoUrl(activeContent.videoUrl)} title={activeContent.title} />
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
+                          No video URL configured for this lesson yet.
+                        </div>
+                      )}
+                      {activeContent.description && (
+                        <div className="rounded-xl bg-white p-4 border border-slate-200 text-sm text-slate-700 leading-relaxed">
+                          <h4 className="font-bold text-slate-900 mb-1">Lesson Notes</h4>
+                          {activeContent.description}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-xl bg-white p-6 border border-slate-200 text-slate-800 leading-relaxed text-sm whitespace-pre-wrap font-sans">
+                      {activeContent.contentBody || "No text content written for this lesson yet."}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
+          ) : activeSelection.type === "quiz" && activeModule ? (
+            /* QUIZ STUDIO WORKSPACE */
+            <div className="card-flush p-6 space-y-4">
+              <div className="border-b border-slate-100 pb-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#0A6847]">
+                  Module Assessment &bull; {activeModule.title}
+                </span>
+                <h2 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                  Module Quiz Builder
+                </h2>
+              </div>
+              <ModuleQuizPanel courseId={courseId} module={activeModule} editable={isDraft} />
+            </div>
+          ) : activeSelection.type === "module" && activeModule ? (
+            /* MODULE SETTINGS WORKSPACE */
+            <div className="card-flush p-6 space-y-6">
+              <div className="border-b border-slate-100 pb-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#0A6847]">
+                  Module Chapter Settings
+                </span>
+                <h2 className="text-xl font-extrabold text-slate-900 mt-0.5">
+                  {activeModule.title}
+                </h2>
+              </div>
+
+              <form onSubmit={handleSaveModule} className="space-y-4">
+                <label className="block">
+                  <span className="label-field">Module Title *</span>
+                  <input
+                    required
+                    value={moduleEditForm.title}
+                    onChange={(e) => setModuleEditForm({ ...moduleEditForm, title: e.target.value })}
+                    disabled={!isDraft}
+                    className="input-field mt-1.5"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="label-field">Module Description / Objectives</span>
+                  <textarea
+                    rows={4}
+                    value={moduleEditForm.description}
+                    onChange={(e) => setModuleEditForm({ ...moduleEditForm, description: e.target.value })}
+                    disabled={!isDraft}
+                    className="input-field mt-1.5"
+                    placeholder="Describe what learners will accomplish in this chapter..."
+                  />
+                </label>
+
+                {isDraft && (
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setConfirmModal({
+                          isOpen: true,
+                          title: `Delete module "${activeModule.title}"?`,
+                          description: "Deleting this module will also remove all lessons and quiz content inside it.",
+                          confirmLabel: "Delete Module",
+                          variant: "danger",
+                          onConfirm: () => {
+                            deleteModule.mutate(activeModule.id);
+                            closeConfirmModal();
+                          },
+                        });
+                      }}
+                      className="text-xs font-bold text-red-600 hover:underline"
+                    >
+                      Delete Module
+                    </button>
+
+                    <button
+                      type="submit"
+                      disabled={updateModule.isPending}
+                      className="btn-primary"
+                    >
+                      {updateModule.isPending ? "Saving..." : "Save Module Details"}
+                    </button>
+                  </div>
+                )}
+              </form>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Quick Actions</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAddContentModule({ id: activeModule.id, title: activeModule.title })}
+                    disabled={!isDraft}
+                    className="btn-primary-sm"
+                  >
+                    + Add Lesson to Module
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Right Column: Interactive Curriculum Playlist Sidebar (5 cols) */}
+        <div className="lg:col-span-5 space-y-4">
+          <div className="card-flush p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">Curriculum Playlist</h3>
+                <p className="text-xs text-slate-500">Modules & Lessons</p>
+              </div>
+
+              {isAuthor && isDraft && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddModule(true)}
+                  className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-extrabold text-slate-800 hover:border-[#7ABA78] hover:bg-[#F4FAF4] hover:text-[#0A6847] transition shadow-2xs"
+                >
+                  + Add Module
+                </button>
+              )}
+            </div>
+
+            {/* Search Playlist Filter */}
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Filter playlist contents..."
+                value={playlistSearch}
+                onChange={(e) => setPlaylistSearch(e.target.value)}
+                className="input-field text-xs py-2 pl-3 pr-8"
+              />
+              {playlistSearch && (
+                <button
+                  type="button"
+                  onClick={() => setPlaylistSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 hover:text-slate-600"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Modules Accordion List */}
+            {modules.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-500 space-y-2">
+                <p>No modules created for this course yet.</p>
+                {isAuthor && isDraft && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddModule(true)}
+                    className="btn-primary-sm"
+                  >
+                    + Add First Module
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {modules.map((module, mIndex) => {
+                  const isExpanded = expandedModules[module.id] ?? true;
+                  const contents = (module.contents || []).filter(
+                    (c) => !searchFilter || c.title.toLowerCase().includes(searchFilter)
+                  );
+                  const isModuleActive = activeSelection?.type === "module" && activeSelection.moduleId === module.id;
+
+                  return (
+                    <div
+                      key={module.id}
+                      className={`rounded-2xl border transition-all ${
+                        isModuleActive
+                          ? "border-[#0A6847] ring-1 ring-[#0A6847]/30 bg-emerald-50/20 shadow-xs"
+                          : "border-slate-200/90 bg-white hover:border-slate-300"
+                      }`}
+                    >
+                      {/* Module Header Bar */}
+                      <div className="flex items-center justify-between p-3.5 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectModule(module)}
+                          className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+                        >
+                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#E8F5E9] text-xs font-extrabold text-[#0A6847]">
+                            {mIndex + 1}
+                          </span>
+                          <span className="font-extrabold text-sm text-slate-900 truncate">
+                            {module.title}
+                          </span>
+                        </button>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isAuthor && isDraft && (
+                            <>
+                              <button
+                                type="button"
+                                disabled={mIndex === 0}
+                                onClick={() => handleMoveModule(mIndex, -1)}
+                                className="rounded p-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-20"
+                                title="Move Module Up"
+                              >
+                                &uarr;
+                              </button>
+                              <button
+                                type="button"
+                                disabled={mIndex === modules.length - 1}
+                                onClick={() => handleMoveModule(mIndex, 1)}
+                                className="rounded p-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-20"
+                                title="Move Module Down"
+                              >
+                                &darr;
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setExpandedModules((prev) => ({
+                                ...prev,
+                                [module.id]: !isExpanded,
+                              }))
+                            }
+                            className="rounded p-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+                          >
+                            {isExpanded ? "▲" : "▼"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Expandable Module Playlist Items */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 p-2 space-y-1 bg-slate-50/40 rounded-b-2xl">
+                          {contents.map((item) => {
+                            const isContentActive =
+                              activeSelection?.type === "content" && activeSelection.contentId === item.id;
+                            const isVideo = item.contentType === "VIDEO";
+
+                            return (
+                              <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => handleSelectContent(module, item)}
+                                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
+                                  isContentActive
+                                    ? "bg-[#0A6847] text-white font-bold shadow-xs"
+                                    : "text-slate-700 hover:bg-slate-100/80"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                  <span className={isContentActive ? "text-white" : "text-[#0A6847]"}>
+                                    {isVideo ? <PlayIcon /> : <DocumentIcon />}
+                                  </span>
+                                  <span className="truncate">{item.title}</span>
+                                </div>
+                                <span className={`text-[10px] shrink-0 ml-2 ${isContentActive ? "text-white/80" : "text-slate-400"}`}>
+                                  {estimateMinutes(item)}m
+                                </span>
+                              </button>
+                            );
+                          })}
+
+                          {/* Quiz Item (if present or add quiz action) */}
+                          {module.quiz ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSelectQuiz(module)}
+                              className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition ${
+                                activeSelection?.type === "quiz" && activeSelection.moduleId === module.id
+                                  ? "bg-[#0A6847] text-white font-bold shadow-xs"
+                                  : "text-slate-700 hover:bg-slate-100/80"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <span className={activeSelection?.type === "quiz" ? "text-white" : "text-amber-600"}>
+                                  <QuizIcon />
+                                </span>
+                                <span className="truncate">Quiz: {module.quiz.title}</span>
+                              </div>
+                              <span className={`text-[10px] font-semibold shrink-0 ml-2 ${activeSelection?.type === "quiz" ? "text-white/80" : "text-amber-700"}`}>
+                                {module.quiz.questionCount ?? 0} Qs
+                              </span>
+                            </button>
+                          ) : null}
+
+                          {/* Module Quick Action Bar */}
+                          {isAuthor && isDraft && (
+                            <div className="pt-2 flex items-center gap-2 justify-end">
+                              <button
+                                type="button"
+                                onClick={() => setAddContentModule({ id: module.id, title: module.title })}
+                                className="text-[11px] font-bold text-[#0A6847] hover:underline px-2 py-1"
+                              >
+                                + Add Lesson
+                              </button>
+                              {!module.quiz && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectQuiz(module)}
+                                  className="text-[11px] font-bold text-amber-700 hover:underline px-2 py-1"
+                                >
+                                  + Add Quiz
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Learner Preview Modal */}
+      {/* Edit Course Settings Modal */}
+      {editCourseDetailsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-lg font-bold text-slate-900">Course Metadata & Settings</h3>
+              <button
+                type="button"
+                onClick={() => setEditCourseDetailsModal(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCourseDetails} className="space-y-4">
+              <label className="block">
+                <span className="label-field">Course Title *</span>
+                <input
+                  required
+                  value={courseDetailsForm.title}
+                  onChange={(e) => setCourseDetailsForm({ ...courseDetailsForm, title: e.target.value })}
+                  disabled={!isDraft}
+                  className="input-field mt-1.5"
+                />
+              </label>
+
+              <label className="block">
+                <span className="label-field">Category</span>
+                <input
+                  value={courseDetailsForm.category}
+                  onChange={(e) => setCourseDetailsForm({ ...courseDetailsForm, category: e.target.value })}
+                  disabled={!isDraft}
+                  placeholder="e.g. AI & Machine Learning"
+                  className="input-field mt-1.5"
+                />
+              </label>
+
+              <label className="block">
+                <span className="label-field">Description</span>
+                <textarea
+                  rows={3}
+                  value={courseDetailsForm.description}
+                  onChange={(e) => setCourseDetailsForm({ ...courseDetailsForm, description: e.target.value })}
+                  disabled={!isDraft}
+                  className="input-field mt-1.5"
+                />
+              </label>
+
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={courseDetailsForm.allowSelfEnrollment}
+                  onChange={(e) => setCourseDetailsForm({ ...courseDetailsForm, allowSelfEnrollment: e.target.checked })}
+                  disabled={!isDraft}
+                  className="rounded border-slate-300 text-[#0A6847]"
+                />
+                Allow self-enrollment for learners
+              </label>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onClick={() => setEditCourseDetailsModal(false)} className="btn-secondary">
+                  Cancel
+                </button>
+                {isDraft && (
+                  <button type="submit" disabled={updateCourseDetails.isPending} className="btn-primary">
+                    {updateCourseDetails.isPending ? "Saving..." : "Save Settings"}
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Structured Add Module Modal */}
+      <StructuredAddModuleModal
+        isOpen={showAddModule}
+        onClose={() => setShowAddModule(false)}
+        courseId={courseId}
+        onSuccess={() => {
+          clearError();
+          refreshModules();
+        }}
+        reportError={reportError}
+        clearError={clearError}
+      />
+
+      {/* Add Content / Lesson Modal */}
+      {addContentModule && (
+        <AddContentModal
+          isOpen={Boolean(addContentModule)}
+          onClose={() => setAddContentModule(null)}
+          moduleTitle={addContentModule.title}
+          isPending={addContent.isPending}
+          onAdd={(payload) => addContent.mutate({ moduleId: addContentModule.id, payload })}
+        />
+      )}
+
+      {/* Learner Full Preview Modal */}
       <LearnerPreviewModal
         isOpen={showLearnerPreview}
         onClose={() => setShowLearnerPreview(false)}
@@ -470,104 +1139,7 @@ export default function CourseManagePage() {
         modules={modules}
       />
 
-      {isAuthor && !isDraft && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          {course.status === "PUBLISHED"
-            ? "This course is published, so modules, content and quizzes are locked. Use “Unpublish to Edit” above to make changes, then republish."
-            : "This course is archived and can no longer be edited."}
-        </p>
-      )}
-
-      {/* Modules & Content Section */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900">Course Modules & Lessons</h2>
-            <p className="text-sm text-slate-600">
-              Modules are sequential chapters. Each module can contain text & video training content.
-            </p>
-          </div>
-
-          {isAuthor && isDraft && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowAddModule(true);
-                clearError();
-              }}
-              className="btn-primary"
-            >
-              + Add Module (Structured)
-            </button>
-          )}
-        </div>
-
-        {/* Structured Add Module Modal */}
-        <StructuredAddModuleModal
-          isOpen={showAddModule}
-          onClose={() => setShowAddModule(false)}
-          courseId={courseId}
-          onSuccess={() => {
-            clearError();
-            refreshModules();
-          }}
-          reportError={reportError}
-          clearError={clearError}
-        />
-
-        {/* Module List */}
-        {modulesQuery.isPending && (
-          <p className="text-slate-500">Loading modules...</p>
-        )}
-
-        {modulesQuery.isSuccess && modules.length === 0 && !showAddModule && (
-          <div className="rounded-lg border border-dashed border-slate-300 p-8 text-center text-slate-500">
-            No modules added to this course yet.
-            {isAuthor && isDraft && (
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModule(true)}
-                  className="text-sm font-medium text-slate-900 underline hover:text-slate-700"
-                >
-                  Create the first module
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {modules.map((mod, index) => (
-            <ModuleCard
-              key={mod.id}
-              courseId={courseId}
-              module={mod}
-              index={index}
-              totalModules={modules.length}
-              isAuthor={isAuthor}
-              isDraft={isDraft}
-              editingModuleId={editingModuleId}
-              setEditingModuleId={setEditingModuleId}
-              editModuleForm={editModuleForm}
-              setEditModuleForm={setEditModuleForm}
-              handleUpdateModule={handleUpdateModule}
-              deleteModule={deleteModule}
-              handleMoveModule={handleMoveModule}
-              reportError={reportError}
-              clearError={clearError}
-              addingContentModuleId={addingContentModuleId}
-              setAddingContentModuleId={setAddingContentModuleId}
-              contentForm={contentForm}
-              setContentForm={setContentForm}
-              editingContent={editingContent}
-              setEditingContent={setEditingContent}
-              setConfirmModal={setConfirmModal}
-            />
-          ))}
-        </div>
-      </div>
-
+      {/* Custom Confirm Modal */}
       <ConfirmModal
         isOpen={confirmModal.isOpen}
         onClose={closeConfirmModal}
@@ -577,587 +1149,6 @@ export default function CourseManagePage() {
         confirmLabel={confirmModal.confirmLabel}
         variant={confirmModal.variant}
       />
-    </div>
-  );
-}
-
-function ModuleCard({
-  courseId,
-  module,
-  index,
-  totalModules,
-  isAuthor,
-  isDraft,
-  editingModuleId,
-  setEditingModuleId,
-  editModuleForm,
-  setEditModuleForm,
-  handleUpdateModule,
-  deleteModule,
-  setConfirmModal,
-  handleMoveModule,
-  reportError,
-  clearError,
-  addingContentModuleId,
-  setAddingContentModuleId,
-  contentForm,
-  setContentForm,
-  editingContent,
-  setEditingContent,
-}) {
-  const queryClient = useQueryClient();
-
-  // Fetch content list for this module
-  const contentsQuery = useQuery({
-    queryKey: ["module-contents", courseId, module.id],
-    queryFn: async () =>
-      (await api.get(`/courses/${courseId}/modules/${module.id}/contents`)).data,
-  });
-
-  const refreshContents = () => {
-    queryClient.invalidateQueries({
-      queryKey: ["module-contents", courseId, module.id],
-    });
-  };
-
-  const createContent = useMutation({
-    mutationFn: (payload) =>
-      api.post(`/courses/${courseId}/modules/${module.id}/contents`, payload),
-    onSuccess: () => {
-      setAddingContentModuleId(null);
-      setContentForm({ title: "", contentType: "TEXT", contentBody: "", videoUrl: "", description: "" });
-      clearError();
-      refreshContents();
-    },
-    onError: reportError,
-  });
-
-  const updateContent = useMutation({
-    mutationFn: ({ contentId, payload }) =>
-      api.patch(`/courses/${courseId}/modules/${module.id}/contents/${contentId}`, payload),
-    onSuccess: () => {
-      setEditingContent(null);
-      clearError();
-      refreshContents();
-    },
-    onError: reportError,
-  });
-
-  const deleteContent = useMutation({
-    mutationFn: (contentId) =>
-      api.delete(`/courses/${courseId}/modules/${module.id}/contents/${contentId}`),
-    onSuccess: () => {
-      clearError();
-      refreshContents();
-    },
-    onError: reportError,
-  });
-
-  const reorderContents = useMutation({
-    mutationFn: (contentIds) =>
-      api.patch(`/courses/${courseId}/modules/${module.id}/contents/reorder`, {
-        contentIds,
-      }),
-    onSuccess: () => {
-      clearError();
-      refreshContents();
-    },
-    onError: reportError,
-  });
-
-  const contents = contentsQuery.data?.data ?? [];
-
-  function handleCreateContentSubmit(e) {
-    e.preventDefault();
-    clearError();
-    const payload = {
-      title: contentForm.title,
-      contentType: contentForm.contentType,
-      contentBody: contentForm.contentType === "TEXT" ? contentForm.contentBody : null,
-      videoUrl: contentForm.contentType === "VIDEO" ? contentForm.videoUrl : null,
-      description: contentForm.contentType === "VIDEO" ? contentForm.description || null : null,
-    };
-    createContent.mutate(payload);
-  }
-
-  function handleUpdateContentSubmit(e) {
-    e.preventDefault();
-    if (!editingContent) return;
-    clearError();
-    const payload = {
-      title: editingContent.title,
-      contentBody: editingContent.contentType === "TEXT" ? editingContent.contentBody : null,
-      videoUrl: editingContent.contentType === "VIDEO" ? editingContent.videoUrl : null,
-      description: editingContent.contentType === "VIDEO" ? editingContent.description || null : null,
-    };
-    updateContent.mutate({ contentId: editingContent.id, payload });
-  }
-
-  function handleMoveContent(cIndex, direction) {
-    const targetIndex = cIndex + direction;
-    if (targetIndex < 0 || targetIndex >= contents.length) return;
-    const reordered = [...contents];
-    const [moved] = reordered.splice(cIndex, 1);
-    reordered.splice(targetIndex, 0, moved);
-    reorderContents.mutate(reordered.map((c) => c.id));
-  }
-
-  const isEditingThisModule = editingModuleId === module.id;
-
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* Module Header */}
-      <div className="border-b border-slate-100 bg-slate-50 p-4">
-        {isEditingThisModule ? (
-          <form onSubmit={(e) => handleUpdateModule(e, module.id)} className="space-y-3">
-            <input
-              required
-              value={editModuleForm.title}
-              onChange={(e) =>
-                setEditModuleForm({ ...editModuleForm, title: e.target.value })
-              }
-              className="input-field"
-            />
-            <input
-              placeholder="Description"
-              value={editModuleForm.description}
-              onChange={(e) =>
-                setEditModuleForm({ ...editModuleForm, description: e.target.value })
-              }
-              className="input-field"
-            />
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="btn-primary-sm"
-              >
-                Save
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingModuleId(null)}
-                className="btn-secondary-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-700">
-                {module.displayOrder}
-              </span>
-              <div>
-                <h3 className="font-semibold text-slate-900">{module.title}</h3>
-                {module.description && (
-                  <p className="text-xs text-slate-600">{module.description}</p>
-                )}
-              </div>
-            </div>
-
-            {isAuthor && isDraft && (
-              <div className="flex items-center gap-1">
-                {/* Reorder Buttons */}
-                <button
-                  type="button"
-                  disabled={index === 0}
-                  onClick={() => handleMoveModule(index, -1)}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
-                  title="Move Module Up"
-                >
-                  &uarr;
-                </button>
-                <button
-                  type="button"
-                  disabled={index === totalModules - 1}
-                  onClick={() => handleMoveModule(index, 1)}
-                  className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
-                  title="Move Module Down"
-                >
-                  &darr;
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingModuleId(module.id);
-                    setEditModuleForm({
-                      title: module.title,
-                      description: module.description || "",
-                    });
-                    clearError();
-                  }}
-                  className="ml-2 btn-secondary-sm"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setConfirmModal({
-                      isOpen: true,
-                      title: `Delete module "${module.title}"?`,
-                      description: "Deleting this module will also remove all lessons and quiz content inside it.",
-                      confirmLabel: "Delete Module",
-                      variant: "danger",
-                      onConfirm: () => {
-                        deleteModule.mutate(module.id);
-                        closeConfirmModal();
-                      },
-                    });
-                  }}
-                  className="btn-danger-sm"
-                >
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Module Content Items */}
-      <div className="p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Training Content ({contents.length})
-          </h4>
-
-          {isAuthor && isDraft && addingContentModuleId !== module.id && (
-            <button
-              type="button"
-              onClick={() => {
-                setAddingContentModuleId(module.id);
-                setContentForm({
-                  title: "",
-                  contentType: "TEXT",
-                  contentBody: "",
-                  videoUrl: "",
-                  description: "",
-                });
-                clearError();
-              }}
-              className="text-xs font-medium text-slate-900 hover:underline"
-            >
-              + Add Content
-            </button>
-          )}
-        </div>
-
-        {/* Add Content Form */}
-        {addingContentModuleId === module.id && (
-          <form
-            onSubmit={handleCreateContentSubmit}
-            className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4"
-          >
-            <h5 className="text-sm font-medium text-slate-800">Add Lesson / Content</h5>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-xs font-medium text-slate-700">Content Title</span>
-                <input
-                  required
-                  placeholder="e.g. Introduction to Variables"
-                  value={contentForm.title}
-                  onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
-                  className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm bg-white"
-                />
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-medium text-slate-700">Content Type</span>
-                <select
-                  value={contentForm.contentType}
-                  onChange={(e) =>
-                    setContentForm({ ...contentForm, contentType: e.target.value })
-                  }
-                  className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm bg-white"
-                >
-                  <option value="TEXT">Text Lesson</option>
-                  <option value="VIDEO">Video Lesson</option>
-                </select>
-              </label>
-            </div>
-
-            {contentForm.contentType === "TEXT" ? (
-              <label className="block">
-                <span className="text-xs font-medium text-slate-700">Lesson Body (Text / Markdown)</span>
-                <textarea
-                  required
-                  rows={4}
-                  placeholder="Write lesson text or instructions here..."
-                  value={contentForm.contentBody}
-                  onChange={(e) =>
-                    setContentForm({ ...contentForm, contentBody: e.target.value })
-                  }
-                  className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm bg-white"
-                />
-              </label>
-            ) : (
-              <div className="space-y-3">
-                <VideoUrlInput
-                  id={`new-content-video-${module.id}`}
-                  value={contentForm.videoUrl}
-                  onChange={(videoUrl) => setContentForm({ ...contentForm, videoUrl })}
-                />
-                <label className="block">
-                  <span className="text-xs font-medium text-slate-700">Description (optional)</span>
-                  <textarea
-                    rows={2}
-                    placeholder="Brief description of this video lesson..."
-                    value={contentForm.description}
-                    onChange={(e) =>
-                      setContentForm({ ...contentForm, description: e.target.value })
-                    }
-                    className="mt-1 w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm bg-white"
-                  />
-                </label>
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-1">
-              <button
-                type="submit"
-                disabled={createContent.isPending}
-                className="btn-primary-sm"
-              >
-                {createContent.isPending ? "Adding..." : "Save Content"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddingContentModuleId(null)}
-                className="btn-secondary-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* Content List */}
-        {contentsQuery.isPending && (
-          <p className="text-xs text-slate-400">Loading lessons...</p>
-        )}
-
-        {contentsQuery.isSuccess && contents.length === 0 && (
-          <p className="text-xs text-slate-500 italic">No content items added to this module yet.</p>
-        )}
-
-        <ul className="space-y-2">
-          {contents.map((item, cIndex) => {
-            const isEditingThisContent = editingContent?.id === item.id;
-
-            return (
-              <li
-                key={item.id}
-                className="rounded-xl border border-slate-200 bg-white p-4 text-sm"
-              >
-                {isEditingThisContent ? (
-                  <form onSubmit={handleUpdateContentSubmit} className="space-y-3">
-                    <input
-                      required
-                      value={editingContent.title}
-                      onChange={(e) =>
-                        setEditingContent({ ...editingContent, title: e.target.value })
-                      }
-                      className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
-                    />
-
-                    {editingContent.contentType === "TEXT" ? (
-                      <textarea
-                        required
-                        rows={3}
-                        value={editingContent.contentBody || ""}
-                        onChange={(e) =>
-                          setEditingContent({ ...editingContent, contentBody: e.target.value })
-                        }
-                        className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
-                      />
-                    ) : (
-                      <div className="space-y-3">
-                        <VideoUrlInput
-                          id={`edit-content-video-${editingContent.id}`}
-                          value={editingContent.videoUrl || ""}
-                          onChange={(videoUrl) =>
-                            setEditingContent({ ...editingContent, videoUrl })
-                          }
-                        />
-                        <textarea
-                          rows={2}
-                          placeholder="Brief description of this video lesson..."
-                          value={editingContent.description || ""}
-                          onChange={(e) =>
-                            setEditingContent({ ...editingContent, description: e.target.value })
-                          }
-                          className="w-full rounded border border-slate-300 px-2.5 py-1.5 text-sm"
-                        />
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={updateContent.isPending}
-                        className="btn-primary-sm"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingContent(null)}
-                        className="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                            item.contentType === "VIDEO"
-                              ? "bg-blue-100 text-blue-700"
-                              : "bg-purple-100 text-purple-700"
-                          }`}
-                        >
-                          {item.contentType}
-                        </span>
-                        <h5 className="font-medium text-slate-900">
-                          {item.displayOrder}. {item.title}
-                        </h5>
-                      </div>
-
-                      {item.contentType === "TEXT" ? (
-                        <p className="text-xs text-slate-600 whitespace-pre-wrap pl-2 border-l-2 border-slate-200">
-                          {item.contentBody}
-                        </p>
-                      ) : (
-                        <VideoLessonPreview item={item} />
-                      )}
-                    </div>
-
-                    {isAuthor && isDraft && (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          disabled={cIndex === 0}
-                          onClick={() => handleMoveContent(cIndex, -1)}
-                          className="rounded-lg border border-slate-200 px-1.5 py-0.5 text-xs transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
-                          title="Move Lesson Up"
-                        >
-                          &uarr;
-                        </button>
-                        <button
-                          type="button"
-                          disabled={cIndex === contents.length - 1}
-                          onClick={() => handleMoveContent(cIndex, 1)}
-                          className="rounded-lg border border-slate-200 px-1.5 py-0.5 text-xs transition hover:border-[#7ABA78] hover:bg-[#F4FAF4] disabled:opacity-30"
-                          title="Move Lesson Down"
-                        >
-                          &darr;
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingContent({
-                              id: item.id,
-                              moduleId: module.id,
-                              title: item.title,
-                              contentType: item.contentType,
-                              contentBody: item.contentBody || "",
-                              videoUrl: item.videoUrl || "",
-                              description: item.description || "",
-                            });
-                            clearError();
-                          }}
-                          className="ml-1 rounded-lg border border-slate-200 px-2 py-0.5 text-xs text-slate-700 transition hover:border-[#7ABA78] hover:bg-[#F4FAF4]"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setConfirmModal({
-                              isOpen: true,
-                              title: `Delete content "${item.title}"?`,
-                              description: "This lesson content will be permanently removed from the module.",
-                              confirmLabel: "Delete Content",
-                              variant: "danger",
-                              onConfirm: () => {
-                                deleteContent.mutate(item.id);
-                                closeConfirmModal();
-                              },
-                            });
-                          }}
-                          className="rounded-lg border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="mt-4">
-          <ModuleQuizPanel courseId={courseId} module={module} editable={isDraft} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function VideoLessonPreview({ item }) {
-  const [showPreview, setShowPreview] = useState(false);
-  const videoObj = item.video || parseVideoUrl(item.videoUrl);
-
-  return (
-    <div className="space-y-2 pl-2 border-l-2 border-slate-200">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-xs text-slate-600">
-          URL:{" "}
-          <a
-            href={item.videoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-blue-600 underline"
-          >
-            {item.videoUrl}
-          </a>
-        </p>
-
-        {videoObj && (
-          <button
-            type="button"
-            onClick={() => setShowPreview(!showPreview)}
-            className="inline-flex items-center gap-1 rounded bg-slate-100 border border-slate-300 px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-200 transition"
-          >
-            ▶ {showPreview ? "Hide Preview" : "Mini Preview"}
-          </button>
-        )}
-      </div>
-
-      {showPreview && videoObj && (
-        <div className="mt-2 max-w-lg rounded-lg border border-slate-200 bg-slate-900 p-2.5 shadow-md">
-          <div className="flex items-center justify-between pb-2 px-1">
-            <span className="text-[11px] font-semibold text-slate-300">
-              Mini Video Preview ({videoObj.provider})
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowPreview(false)}
-              className="text-[11px] font-bold text-slate-400 hover:text-white"
-            >
-              ✕ Close
-            </button>
-          </div>
-          <VideoPlayer video={videoObj} title={item.title} />
-        </div>
-      )}
     </div>
   );
 }
