@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -70,6 +70,8 @@ export default function CourseManagePage() {
 
   const [error, setError] = useState("");
   const [problems, setProblems] = useState([]);
+  const [successMsg, setSuccessMsg] = useState("");
+
   const [showLearnerPreview, setShowLearnerPreview] = useState(false);
   const [showAddModule, setShowAddModule] = useState(false);
   const [addContentModule, setAddContentModule] = useState(null); // { id, title }
@@ -81,10 +83,21 @@ export default function CourseManagePage() {
   const [expandedModules, setExpandedModules] = useState({});
 
   // Editing form states for active item
-  const [lessonEditForm, setLessonEditForm] = useState({ title: "", contentType: "TEXT", contentBody: "", videoUrl: "", description: "" });
+  const [lessonEditForm, setLessonEditForm] = useState({
+    title: "",
+    contentType: "TEXT",
+    contentBody: "",
+    videoUrl: "",
+    description: "",
+  });
   const [moduleEditForm, setModuleEditForm] = useState({ title: "", description: "" });
   const [editCourseDetailsModal, setEditCourseDetailsModal] = useState(false);
-  const [courseDetailsForm, setCourseDetailsForm] = useState({ title: "", description: "", category: "", allowSelfEnrollment: false });
+  const [courseDetailsForm, setCourseDetailsForm] = useState({
+    title: "",
+    description: "",
+    category: "",
+    allowSelfEnrollment: false,
+  });
 
   // Modal confirm state
   const [confirmModal, setConfirmModal] = useState({
@@ -121,6 +134,49 @@ export default function CourseManagePage() {
   const course = courseQuery.data;
   const modules = useMemo(() => modulesQuery.data ?? [], [modulesQuery.data]);
 
+  // Fetch contents for each module
+  const contentsQueries = useQueries({
+    queries: modules.map((mod) => ({
+      queryKey: ["module-contents", mod.id],
+      queryFn: async () =>
+        (await api.get(`/courses/${courseId}/modules/${mod.id}/contents`)).data.data,
+      enabled: Boolean(courseId && mod.id),
+    })),
+  });
+
+  // Fetch quiz for each module
+  const quizzesQueries = useQueries({
+    queries: modules.map((mod) => ({
+      queryKey: ["quiz", mod.id],
+      queryFn: async () => {
+        try {
+          return (await api.get(`/courses/${courseId}/modules/${mod.id}/quiz`)).data.data;
+        } catch (requestError) {
+          if (requestError?.response?.status === 404) return null;
+          return null;
+        }
+      },
+      enabled: Boolean(courseId && mod.id),
+      retry: false,
+    })),
+  });
+
+  const contentsByModuleId = useMemo(() => {
+    const map = {};
+    modules.forEach((mod, i) => {
+      map[mod.id] = contentsQueries[i]?.data ?? [];
+    });
+    return map;
+  }, [modules, contentsQueries]);
+
+  const quizzesByModuleId = useMemo(() => {
+    const map = {};
+    modules.forEach((mod, i) => {
+      map[mod.id] = quizzesQueries[i]?.data ?? null;
+    });
+    return map;
+  }, [modules, quizzesQueries]);
+
   // Sync course details form
   useEffect(() => {
     if (course) {
@@ -133,7 +189,7 @@ export default function CourseManagePage() {
     }
   }, [course]);
 
-  // Expand all modules by default
+  // Auto-expand all modules by default
   useEffect(() => {
     if (modules.length > 0) {
       const map = {};
@@ -141,27 +197,33 @@ export default function CourseManagePage() {
         map[m.id] = true;
       });
       setExpandedModules((prev) => ({ ...map, ...prev }));
+    }
+  }, [modules]);
 
-      // Set initial active item if none selected
-      if (!activeSelection && modules[0]) {
-        const firstModule = modules[0];
-        if (firstModule.contents && firstModule.contents.length > 0) {
-          const firstItem = firstModule.contents[0];
-          setActiveSelection({ type: "content", moduleId: firstModule.id, contentId: firstItem.id });
-          setLessonEditForm({
-            title: firstItem.title || "",
-            contentType: firstItem.contentType || "TEXT",
-            contentBody: firstItem.contentBody || "",
-            videoUrl: firstItem.videoUrl || "",
-            description: firstItem.description || "",
-          });
-        } else {
-          setActiveSelection({ type: "module", moduleId: firstModule.id });
-          setModuleEditForm({ title: firstModule.title || "", description: firstModule.description || "" });
-        }
+  // Default to first content or first module if activeSelection is not set
+  useEffect(() => {
+    if (modules.length > 0 && !activeSelection) {
+      const firstMod = modules[0];
+      const firstContents = contentsByModuleId[firstMod.id] || [];
+      if (firstContents.length > 0) {
+        const firstItem = firstContents[0];
+        setActiveSelection({ type: "content", moduleId: firstMod.id, contentId: firstItem.id });
+        setLessonEditForm({
+          title: firstItem.title || "",
+          contentType: firstItem.contentType || "TEXT",
+          contentBody: firstItem.contentBody || "",
+          videoUrl: firstItem.videoUrl || "",
+          description: firstItem.description || "",
+        });
+      } else {
+        setActiveSelection({ type: "module", moduleId: firstMod.id });
+        setModuleEditForm({
+          title: firstMod.title || "",
+          description: firstMod.description || "",
+        });
       }
     }
-  }, [modules, activeSelection]);
+  }, [modules, contentsByModuleId, activeSelection]);
 
   // --- Mutations ---
   const refreshCourse = () => {
@@ -171,6 +233,8 @@ export default function CourseManagePage() {
 
   const refreshModules = () => {
     queryClient.invalidateQueries({ queryKey: ["course-manage-modules", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["module-contents"] });
+    queryClient.invalidateQueries({ queryKey: ["quiz"] });
   };
 
   const updateCourseDetails = useMutation({
@@ -179,6 +243,8 @@ export default function CourseManagePage() {
       clearError();
       refreshCourse();
       setEditCourseDetailsModal(false);
+      setSuccessMsg("Course settings updated successfully!");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
@@ -188,6 +254,8 @@ export default function CourseManagePage() {
     onSuccess: () => {
       clearError();
       refreshCourse();
+      setSuccessMsg("Course published successfully to catalogue!");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
@@ -197,6 +265,8 @@ export default function CourseManagePage() {
     onSuccess: () => {
       clearError();
       refreshCourse();
+      setSuccessMsg("Course unpublished. You can now edit modules & lessons.");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
@@ -225,15 +295,20 @@ export default function CourseManagePage() {
       clearError();
       refreshModules();
       setActiveSelection(null);
+      setSuccessMsg("Module deleted successfully.");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
 
   const updateModule = useMutation({
-    mutationFn: ({ moduleId, payload }) => api.patch(`/courses/${courseId}/modules/${moduleId}`, payload),
+    mutationFn: ({ moduleId, payload }) =>
+      api.patch(`/courses/${courseId}/modules/${moduleId}`, payload),
     onSuccess: () => {
       clearError();
       refreshModules();
+      setSuccessMsg("Module details saved successfully!");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
@@ -248,11 +323,14 @@ export default function CourseManagePage() {
   });
 
   const addContent = useMutation({
-    mutationFn: ({ moduleId, payload }) => api.post(`/courses/${courseId}/modules/${moduleId}/contents`, payload),
+    mutationFn: ({ moduleId, payload }) =>
+      api.post(`/courses/${courseId}/modules/${moduleId}/contents`, payload),
     onSuccess: (res, variables) => {
       clearError();
       refreshModules();
       setAddContentModule(null);
+      setSuccessMsg("New lesson added successfully!");
+      setTimeout(() => setSuccessMsg(""), 3500);
       const created = res.data?.data;
       if (created) {
         setActiveSelection({ type: "content", moduleId: variables.moduleId, contentId: created.id });
@@ -273,6 +351,8 @@ export default function CourseManagePage() {
     onSuccess: () => {
       clearError();
       refreshModules();
+      setSuccessMsg("Lesson changes saved successfully!");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
@@ -283,6 +363,8 @@ export default function CourseManagePage() {
       clearError();
       refreshModules();
       setActiveSelection(null);
+      setSuccessMsg("Lesson deleted successfully.");
+      setTimeout(() => setSuccessMsg(""), 3500);
     },
     onError: reportError,
   });
@@ -300,6 +382,8 @@ export default function CourseManagePage() {
   function handleSelectContent(module, item) {
     setActiveSelection({ type: "content", moduleId: module.id, contentId: item.id });
     setWorkspaceTab("edit");
+    setSuccessMsg("");
+    clearError();
     setLessonEditForm({
       title: item.title || "",
       contentType: item.contentType || "TEXT",
@@ -307,20 +391,21 @@ export default function CourseManagePage() {
       videoUrl: item.videoUrl || "",
       description: item.description || "",
     });
-    clearError();
   }
 
   function handleSelectModule(module) {
     setActiveSelection({ type: "module", moduleId: module.id });
+    setSuccessMsg("");
+    clearError();
     setModuleEditForm({
       title: module.title || "",
       description: module.description || "",
     });
-    clearError();
   }
 
   function handleSelectQuiz(module) {
     setActiveSelection({ type: "quiz", moduleId: module.id });
+    setSuccessMsg("");
     clearError();
   }
 
@@ -384,11 +469,13 @@ export default function CourseManagePage() {
 
   // Selected item lookup
   const activeModule = modules.find((m) => m.id === activeSelection?.moduleId);
-  const activeContent = activeModule?.contents?.find((c) => c.id === activeSelection?.contentId);
+  const activeModuleContents = activeModule ? contentsByModuleId[activeModule.id] || [] : [];
+  const activeContent = activeModuleContents.find((c) => c.id === activeSelection?.contentId);
+  const activeQuiz = activeModule ? quizzesByModuleId[activeModule.id] : null;
 
   // Total estimated course duration
-  const totalMinutes = modules.reduce((sum, module) => {
-    const contents = module.contents || [];
+  const totalMinutes = modules.reduce((sum, mod) => {
+    const contents = contentsByModuleId[mod.id] || [];
     return sum + contents.reduce((s, c) => s + estimateMinutes(c), 0);
   }, 0);
 
@@ -521,14 +608,26 @@ export default function CourseManagePage() {
 
       <ErrorNote message={error} problems={problems} />
 
+      {/* Success Toast */}
+      {successMsg && (
+        <div className="rounded-xl bg-emerald-50 border border-emerald-300 p-4 text-xs font-bold text-[#0A6847] flex items-center justify-between shadow-xs">
+          <span className="flex items-center gap-2">✓ {successMsg}</span>
+          <button type="button" onClick={() => setSuccessMsg("")} className="text-emerald-700 hover:text-emerald-900">
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Main Studio 2-Column Grid */}
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left Column: Interactive Studio Workspace Pane (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           {!activeSelection ? (
             <div className="card-flush p-12 text-center text-slate-500 space-y-3">
-              <p className="text-sm font-semibold">Select a module, lesson, or quiz from the curriculum playlist to start editing.</p>
-              {isAuthor && (
+              <p className="text-sm font-semibold">
+                Select a module, lesson, or quiz from the curriculum playlist to start editing.
+              </p>
+              {isAuthor && isDraft && (
                 <button
                   type="button"
                   onClick={() => setShowAddModule(true)}
@@ -731,7 +830,11 @@ export default function CourseManagePage() {
                   Module Quiz Builder
                 </h2>
               </div>
-              <ModuleQuizPanel courseId={courseId} module={activeModule} editable={isDraft} />
+              <ModuleQuizPanel
+                courseId={courseId}
+                module={activeModule}
+                editable={isDraft}
+              />
             </div>
           ) : activeSelection.type === "module" && activeModule ? (
             /* MODULE SETTINGS WORKSPACE */
@@ -813,6 +916,16 @@ export default function CourseManagePage() {
                   >
                     + Add Lesson to Module
                   </button>
+                  {!activeQuiz && (
+                    <button
+                      type="button"
+                      onClick={() => handleSelectQuiz(activeModule)}
+                      disabled={!isDraft}
+                      className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 transition"
+                    >
+                      + Add Module Quiz
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -877,10 +990,14 @@ export default function CourseManagePage() {
               <div className="space-y-3">
                 {modules.map((module, mIndex) => {
                   const isExpanded = expandedModules[module.id] ?? true;
-                  const contents = (module.contents || []).filter(
+                  const moduleContents = contentsByModuleId[module.id] || [];
+                  const moduleQuiz = quizzesByModuleId[module.id] || null;
+
+                  const filteredContents = moduleContents.filter(
                     (c) => !searchFilter || c.title.toLowerCase().includes(searchFilter)
                   );
-                  const isModuleActive = activeSelection?.type === "module" && activeSelection.moduleId === module.id;
+                  const isModuleActive =
+                    activeSelection?.type === "module" && activeSelection.moduleId === module.id;
 
                   return (
                     <div
@@ -948,7 +1065,13 @@ export default function CourseManagePage() {
                       {/* Expandable Module Playlist Items */}
                       {isExpanded && (
                         <div className="border-t border-slate-100 p-2 space-y-1 bg-slate-50/40 rounded-b-2xl">
-                          {contents.map((item) => {
+                          {filteredContents.length === 0 && !moduleQuiz ? (
+                            <p className="text-[11px] italic text-slate-400 px-3 py-2">
+                              No lessons in this module yet.
+                            </p>
+                          ) : null}
+
+                          {filteredContents.map((item) => {
                             const isContentActive =
                               activeSelection?.type === "content" && activeSelection.contentId === item.id;
                             const isVideo = item.contentType === "VIDEO";
@@ -970,15 +1093,19 @@ export default function CourseManagePage() {
                                   </span>
                                   <span className="truncate">{item.title}</span>
                                 </div>
-                                <span className={`text-[10px] shrink-0 ml-2 ${isContentActive ? "text-white/80" : "text-slate-400"}`}>
+                                <span
+                                  className={`text-[10px] shrink-0 ml-2 ${
+                                    isContentActive ? "text-white/80" : "text-slate-400"
+                                  }`}
+                                >
                                   {estimateMinutes(item)}m
                                 </span>
                               </button>
                             );
                           })}
 
-                          {/* Quiz Item (if present or add quiz action) */}
-                          {module.quiz ? (
+                          {/* Quiz Item (if present) */}
+                          {moduleQuiz && (
                             <button
                               type="button"
                               onClick={() => handleSelectQuiz(module)}
@@ -992,17 +1119,21 @@ export default function CourseManagePage() {
                                 <span className={activeSelection?.type === "quiz" ? "text-white" : "text-amber-600"}>
                                   <QuizIcon />
                                 </span>
-                                <span className="truncate">Quiz: {module.quiz.title}</span>
+                                <span className="truncate">Quiz: {moduleQuiz.title}</span>
                               </div>
-                              <span className={`text-[10px] font-semibold shrink-0 ml-2 ${activeSelection?.type === "quiz" ? "text-white/80" : "text-amber-700"}`}>
-                                {module.quiz.questionCount ?? 0} Qs
+                              <span
+                                className={`text-[10px] font-semibold shrink-0 ml-2 ${
+                                  activeSelection?.type === "quiz" ? "text-white/80" : "text-amber-700"
+                                }`}
+                              >
+                                {moduleQuiz.questions?.length ?? moduleQuiz.questionCount ?? 0} Qs
                               </span>
                             </button>
-                          ) : null}
+                          )}
 
                           {/* Module Quick Action Bar */}
                           {isAuthor && isDraft && (
-                            <div className="pt-2 flex items-center gap-2 justify-end">
+                            <div className="pt-2 flex items-center gap-2 justify-end border-t border-slate-200/50 mt-1">
                               <button
                                 type="button"
                                 onClick={() => setAddContentModule({ id: module.id, title: module.title })}
@@ -1010,7 +1141,7 @@ export default function CourseManagePage() {
                               >
                                 + Add Lesson
                               </button>
-                              {!module.quiz && (
+                              {!moduleQuiz && (
                                 <button
                                   type="button"
                                   onClick={() => handleSelectQuiz(module)}
@@ -1115,6 +1246,8 @@ export default function CourseManagePage() {
         onSuccess={() => {
           clearError();
           refreshModules();
+          setSuccessMsg("Module and contents added successfully!");
+          setTimeout(() => setSuccessMsg(""), 3500);
         }}
         reportError={reportError}
         clearError={clearError}
