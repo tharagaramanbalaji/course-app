@@ -128,12 +128,20 @@ async def download_certificate(
     learner: CurrentUser,
     db: DbSession,
 ) -> Response:
-    """Served as a text attachment. Rendering it as a PDF is a presentation
-    concern and is deliberately out of scope for V1."""
+    """Download certificate as a PDF if PDFMonkey is configured, or plain text fallback."""
     service = CertificateService(db)
     certificate = await service.get_for_learner(learner, certificate_id)
-    filename = f"{certificate.certificate_number}.txt"
 
+    pdf_bytes = await service.get_pdf_bytes(certificate)
+    if pdf_bytes:
+        filename = f"{certificate.certificate_number}.pdf"
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    filename = f"{certificate.certificate_number}.txt"
     return Response(
         content=service.as_text(certificate),
         media_type="text/plain; charset=utf-8",

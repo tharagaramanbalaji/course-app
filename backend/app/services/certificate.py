@@ -5,6 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.exceptions import BusinessRuleError, NotFoundError
 from app.models.certificate import Certificate
 from app.models.enums import EnrollmentStatus
@@ -13,6 +14,7 @@ from app.repositories.certificate import CertificateRepository
 from app.repositories.enrollment import EnrollmentRepository
 from app.schemas.certificate import CertificateVerification
 from app.services.authoring import AuthoringGuard
+from app.services.pdfmonkey import PDFMonkeyService
 
 
 class CertificateService:
@@ -21,6 +23,7 @@ class CertificateService:
         self.certificates = CertificateRepository(session)
         self.enrollments = EnrollmentRepository(session)
         self.guard = AuthoringGuard(session)
+        self.pdfmonkey = PDFMonkeyService()
 
     async def list_for_learner(self, learner: User) -> Sequence[Certificate]:
         return await self.certificates.list_for_user(learner.id)
@@ -106,3 +109,42 @@ class CertificateService:
                 "",
             ]
         )
+
+    async def generate_pdf(self, certificate: Certificate) -> str | None:
+        """Render certificate via PDFMonkey and persist the download URL."""
+        if not self.pdfmonkey.is_configured:
+            return None
+
+        verification_url = (
+            f"{settings.FRONTEND_URL.rstrip('/')}/verify/{certificate.certificate_number}"
+        )
+        url = await self.pdfmonkey.generate_certificate_pdf(
+            participant_name=certificate.participant_name,
+            course_name=certificate.course_name,
+            completion_date=certificate.completion_date.strftime("%d %B %Y"),
+            certificate_number=certificate.certificate_number,
+            final_score=f"{certificate.final_score}",
+            verification_url=verification_url,
+        )
+        if url:
+            certificate.certificate_url = url
+            await self.session.commit()
+        return url
+
+    async def get_pdf_bytes(self, certificate: Certificate) -> bytes | None:
+        """Retrieve the binary PDF bytes, generating via PDFMonkey if not already rendered or if URL expired."""
+        url = certificate.certificate_url
+        if url:
+            pdf_bytes = await self.pdfmonkey.fetch_pdf_bytes(url)
+            if pdf_bytes:
+                return pdf_bytes
+            # If the stored URL is expired, invalid, or a mock URL (e.g. 404), regenerate it
+            url = None
+
+        if not url and self.pdfmonkey.is_configured:
+            url = await self.generate_pdf(certificate)
+            if url:
+                return await self.pdfmonkey.fetch_pdf_bytes(url)
+
+        return None
+

@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     SSO_DEFAULT_ROLE: str = "USER"
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # --- PDFMonkey ---
+    PDFMONKEY_API_KEY: str = ""
+    PDFMONKEY_TEMPLATE_ID: str = ""
+    PDFMONKEY_BASE_URL: str = "https://api.pdfmonkey.io/api/v1"
+
     # --- CORS ---
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
