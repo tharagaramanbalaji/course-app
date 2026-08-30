@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # --- Enterprise SSO (Google Workspace, OIDC) ---
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    SSO_ALLOWED_DOMAINS: list[str] = []
+    SSO_AUTO_PROVISION: bool = True
+    SSO_DEFAULT_ROLE: str = "USER"
+    FRONTEND_URL: str = "http://localhost:5173"
+
     # --- CORS ---
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 

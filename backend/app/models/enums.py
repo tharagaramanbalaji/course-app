@@ -22,6 +22,14 @@ class UserStatus(str, Enum):
     INACTIVE = "INACTIVE"
 
 
+class AuthProvider(str, Enum):
+    LOCAL = "LOCAL"
+    GOOGLE = "GOOGLE"
+    MICROSOFT = "MICROSOFT"
+    OKTA = "OKTA"
+
+
+
 class CourseStatus(str, Enum):
     DRAFT = "DRAFT"
     PUBLISHED = "PUBLISHED"

@@ -16,6 +16,7 @@ from app.api.v1.endpoints import (
     my_learning,
     questions,
     quizzes,
+    sso,
     users,
 )
 
@@ -24,6 +25,7 @@ api_router = APIRouter()
 # Public and infrastructure
 api_router.include_router(health.router)
 api_router.include_router(auth.router)
+api_router.include_router(sso.router)
 api_router.include_router(certificates.router)
 
 # Administration

@@ -39,6 +39,13 @@ export function AuthProvider({ children }) {
     return data.data.user;
   }, []);
 
+  const loginWithSSO = useCallback(async (code, state) => {
+    const { data } = await api.post("/auth/sso/google/callback", { code, state });
+    tokenStore.save(data.data);
+    setUser(data.data.user);
+    return data.data.user;
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await api.post("/auth/logout");
@@ -54,11 +61,12 @@ export function AuthProvider({ children }) {
       user,
       loading,
       login,
+      loginWithSSO,
       logout,
       isAuthor: user?.role === "ADMIN" || user?.role === "INSTRUCTOR",
       isAdmin: user?.role === "ADMIN",
     }),
-    [user, loading, login, logout],
+    [user, loading, login, loginWithSSO, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

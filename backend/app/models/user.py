@@ -8,7 +8,7 @@ from sqlalchemy import Enum, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.enums import UserRole, UserStatus
+from app.models.enums import AuthProvider, UserRole, UserStatus
 
 if TYPE_CHECKING:
     from app.models.assignment import Assignment
@@ -40,6 +40,12 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
         default=UserStatus.ACTIVE,
         server_default=UserStatus.ACTIVE.value,
+    )
+    auth_provider: Mapped[AuthProvider] = mapped_column(
+        Enum(AuthProvider, name="auth_provider"),
+        nullable=False,
+        default=AuthProvider.LOCAL,
+        server_default=AuthProvider.LOCAL.value,
     )
     # Bumped on logout, which invalidates every refresh token already issued.
     token_version: Mapped[int] = mapped_column(

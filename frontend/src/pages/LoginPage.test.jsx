@@ -61,4 +61,23 @@ describe("LoginPage", () => {
 
     expect(screen.getByLabelText("Email")).toHaveValue("admin@example.com");
   });
+
+  it("renders Google Workspace SSO button and requests authorization URL on click", async () => {
+    api.get.mockResolvedValue({
+      data: { data: { authorization_url: "https://accounts.google.com/o/oauth2/v2/auth?client_id=test" } },
+    });
+    renderLogin();
+
+    const ssoBtn = await screen.findByRole("button", { name: /sign in with google workspace/i });
+    expect(ssoBtn).toBeInTheDocument();
+
+    await userEvent.click(ssoBtn);
+    expect(api.get).toHaveBeenCalledWith(
+      "/auth/sso/google/authorize",
+      expect.objectContaining({
+        params: expect.objectContaining({ redirect_uri: expect.stringContaining("/login") }),
+      }),
+    );
+  });
 });
+
