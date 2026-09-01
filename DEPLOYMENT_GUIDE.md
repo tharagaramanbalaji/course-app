@@ -75,6 +75,7 @@ Deploy the entire **CourseApp / LearnFlow** application completely **FREE** with
 
 | Key | Value | Notes |
 |---|---|---|
+| `PYTHON_VERSION` | `3.12.9` | Ensures pre-compiled binary wheels install smoothly |
 | `DATABASE_URL` | `postgresql://...` *(Paste Internal DB URL from Step 1)* | Database connection |
 | `SECRET_KEY` | `your-long-random-secret-key-32-chars-or-more!` | Token encryption |
 | `ENVIRONMENT` | `production` | Production mode |

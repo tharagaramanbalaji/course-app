@@ -170,11 +170,10 @@ function LearnerModulePreviewCard({ courseId, mod, modIdx }) {
                 >
                   <div className="flex items-center gap-2">
                     <span
-                      className={`rounded px-2 py-0.5 text-[10px] font-extrabold uppercase ${
-                        item.contentType === "VIDEO"
+                      className={`rounded px-2 py-0.5 text-[10px] font-extrabold uppercase ${item.contentType === "VIDEO"
                           ? "bg-blue-100 text-blue-800"
                           : "bg-purple-100 text-purple-800"
-                      }`}
+                        }`}
                     >
                       {item.contentType}
                     </span>
