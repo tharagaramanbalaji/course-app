@@ -34,13 +34,14 @@ INSTRUCTOR_EMAIL = "instructor@example.com"
 JSON_FILE_PATH = Path(__file__).resolve().parents[1] / "data" / "courses.json"
 
 
-async def import_courses(clear_existing: bool = False):
-    if not JSON_FILE_PATH.exists():
-        print(f"❌ Error: File not found at {JSON_FILE_PATH}")
+async def import_courses(json_path: Path | str | None = None, clear_existing: bool = False):
+    target_path = Path(json_path) if json_path else JSON_FILE_PATH
+    if not target_path.exists():
+        print(f"[ERROR] File not found at {target_path}")
         print("Please save your generated courses JSON to backend/data/courses.json")
         return
 
-    with open(JSON_FILE_PATH, "r", encoding="utf-8") as f:
+    with open(target_path, "r", encoding="utf-8") as f:
         courses_data = json.load(f)
 
     async with AsyncSessionLocal() as session:
@@ -48,7 +49,7 @@ async def import_courses(clear_existing: bool = False):
         result = await session.execute(select(User).where(User.email == INSTRUCTOR_EMAIL))
         instructor = result.scalar_one_or_none()
         if not instructor:
-            print(f"❌ Instructor user {INSTRUCTOR_EMAIL} not found. Run scripts/seed.py first!")
+            print(f"[ERROR] Instructor user {INSTRUCTOR_EMAIL} not found. Run scripts/seed.py first!")
             return
 
         if clear_existing:
