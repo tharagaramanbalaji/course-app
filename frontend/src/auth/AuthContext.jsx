@@ -40,7 +40,12 @@ export function AuthProvider({ children }) {
   }, []);
 
   const loginWithSSO = useCallback(async (code, state) => {
-    const { data } = await api.post("/auth/sso/google/callback", { code, state });
+    const redirectUri = `${window.location.origin}/login`;
+    const { data } = await api.post(
+      "/auth/sso/google/callback",
+      { code, state },
+      { params: { redirect_uri: redirectUri } },
+    );
     tokenStore.save(data.data);
     setUser(data.data.user);
     return data.data.user;
