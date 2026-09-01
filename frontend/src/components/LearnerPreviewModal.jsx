@@ -1,14 +1,16 @@
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import VideoPlayer from "@/components/VideoPlayer";
 import { parseVideoUrl } from "@/lib/video";
 
 export default function LearnerPreviewModal({ isOpen, onClose, course, modules = [] }) {
   if (!isOpen || !course) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/70 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-4xl rounded-xl border border-slate-200 bg-slate-50 shadow-2xl transition-all my-8 max-h-[90vh] flex flex-col overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-900/75 p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-4xl rounded-xl border border-slate-200 bg-slate-50 shadow-2xl transition-all my-8 max-h-[90vh] flex flex-col overflow-hidden z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
           <div className="flex items-center gap-3">
@@ -90,7 +92,8 @@ export default function LearnerPreviewModal({ isOpen, onClose, course, modules =
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -181,9 +184,9 @@ function LearnerModulePreviewCard({ courseId, mod, modIdx }) {
                   </div>
 
                   {item.contentType === "TEXT" ? (
-                    <p className="text-xs text-slate-700 whitespace-pre-wrap pl-2 border-l-2 border-slate-300 leading-relaxed">
-                      {item.contentBody}
-                    </p>
+                    <div className="rounded-lg bg-white p-3 border border-slate-200">
+                      <MarkdownRenderer content={item.contentBody || ""} />
+                    </div>
                   ) : (
                     <div className="space-y-2 pt-1">
                       {videoObj ? (

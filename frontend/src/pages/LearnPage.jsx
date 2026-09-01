@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { api, getApiErrorMessage } from "@/api/client";
 import ErrorNote from "@/components/ErrorNote";
 import LearnerQuizPanel from "@/components/LearnerQuizPanel";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import VideoPlayer from "@/components/VideoPlayer";
 import { tabContentVariants } from "@/utils/motion";
 
@@ -370,16 +371,16 @@ export default function LearnPage() {
                     </div>
 
                     {selectedContent.contentType === "TEXT" ? (
-                      <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                        {selectedContent.contentBody}
-                      </p>
+                      <div className="mt-4 pt-2">
+                        <MarkdownRenderer content={selectedContent.contentBody} />
+                      </div>
                     ) : (
                       <div className="mt-4 space-y-4">
                         <VideoPlayer video={selectedContent.video} title={selectedContent.title} />
                         {selectedContent.description && (
-                          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                            {selectedContent.description}
-                          </p>
+                          <div className="mt-3">
+                            <MarkdownRenderer content={selectedContent.description} />
+                          </div>
                         )}
                       </div>
                     )}

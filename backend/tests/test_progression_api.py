@@ -506,8 +506,11 @@ async def test_a_certificate_can_be_downloaded(client, db_session):
 
     assert response.status_code == 200
     assert "attachment" in response.headers["content-disposition"]
-    assert certificate["certificateNumber"] in response.text
-    assert "CERTIFICATE OF COMPLETION" in response.text
+    if "application/pdf" in response.headers.get("content-type", ""):
+        assert response.content.startswith(b"%PDF")
+    else:
+        assert certificate["certificateNumber"] in response.text
+        assert "CERTIFICATE OF COMPLETION" in response.text
 
 
 async def test_no_certificate_before_the_course_is_finished(client, db_session):

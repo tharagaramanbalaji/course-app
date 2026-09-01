@@ -8,7 +8,9 @@ import AddContentModal from "@/components/AddContentModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import ErrorNote from "@/components/ErrorNote";
 import LearnerPreviewModal from "@/components/LearnerPreviewModal";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import ModuleQuizPanel from "@/components/ModuleQuizPanel";
+import RichMarkdownEditor from "@/components/RichMarkdownEditor";
 import StructuredAddModuleModal from "@/components/StructuredAddModuleModal";
 import VideoPlayer from "@/components/VideoPlayer";
 import VideoUrlInput from "@/components/VideoUrlInput";
@@ -655,24 +657,31 @@ export default function CourseManagePage() {
                   <button
                     type="button"
                     onClick={() => setWorkspaceTab("edit")}
-                    className={`rounded-lg px-3 py-1.5 transition ${
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
                       workspaceTab === "edit"
                         ? "bg-white text-slate-900 shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
-                    ✏️ Edit Studio
+                    <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span>Edit Studio</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setWorkspaceTab("preview")}
-                    className={`rounded-lg px-3 py-1.5 transition ${
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 transition ${
                       workspaceTab === "preview"
                         ? "bg-white text-[#0A6847] shadow-xs"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
-                    👁️ Learner Preview
+                    <svg className="w-3.5 h-3.5 text-[#0A6847]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    <span>Learner Preview</span>
                   </button>
                 </div>
               </div>
@@ -680,7 +689,7 @@ export default function CourseManagePage() {
               {workspaceTab === "edit" ? (
                 /* EDIT LESSON CONTENT FORM */
                 <form onSubmit={handleSaveLesson} className="space-y-5">
-                  <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="grid gap-4 sm:grid-cols-3 items-end">
                     <label className="block sm:col-span-2">
                       <span className="label-field">Lesson Title *</span>
                       <input
@@ -688,7 +697,7 @@ export default function CourseManagePage() {
                         value={lessonEditForm.title}
                         onChange={(e) => setLessonEditForm({ ...lessonEditForm, title: e.target.value })}
                         disabled={!isDraft}
-                        className="input-field mt-1.5"
+                        className="input-field mt-1.5 h-11"
                       />
                     </label>
 
@@ -698,27 +707,23 @@ export default function CourseManagePage() {
                         value={lessonEditForm.contentType}
                         onChange={(e) => setLessonEditForm({ ...lessonEditForm, contentType: e.target.value })}
                         disabled={!isDraft}
-                        className="input-field mt-1.5 font-bold text-slate-800"
+                        className="input-field mt-1.5 h-11 font-semibold text-slate-800"
                       >
-                        <option value="TEXT">📄 Text Lesson</option>
-                        <option value="VIDEO">🎥 Video Lesson</option>
+                        <option value="TEXT">Text Lesson</option>
+                        <option value="VIDEO">Video Lesson</option>
                       </select>
                     </label>
                   </div>
 
                   {lessonEditForm.contentType === "TEXT" ? (
-                    <label className="block">
-                      <span className="label-field">Lesson Body (Text / Markdown)</span>
-                      <textarea
-                        required
-                        rows={10}
+                    <div className="block">
+                      <span className="label-field mb-1.5 block">Lesson Content (Markdown, Formatting & Live Preview)</span>
+                      <RichMarkdownEditor
                         value={lessonEditForm.contentBody}
-                        onChange={(e) => setLessonEditForm({ ...lessonEditForm, contentBody: e.target.value })}
-                        disabled={!isDraft}
-                        className="input-field mt-1.5 font-mono text-sm leading-relaxed"
-                        placeholder="Write detailed lesson content, code snippets, or notes..."
+                        onChange={(text) => setLessonEditForm({ ...lessonEditForm, contentBody: text })}
+                        rows={10}
                       />
-                    </label>
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       <VideoUrlInput
@@ -803,8 +808,8 @@ export default function CourseManagePage() {
                       )}
                     </div>
                   ) : (
-                    <div className="rounded-xl bg-white p-6 border border-slate-200 text-slate-800 leading-relaxed text-sm whitespace-pre-wrap font-sans">
-                      {activeContent.contentBody || "No text content written for this lesson yet."}
+                    <div className="rounded-xl bg-white p-6 border border-slate-200 shadow-2xs">
+                      <MarkdownRenderer content={activeContent.contentBody || "No text content written for this lesson yet."} />
                     </div>
                   )}
                 </div>

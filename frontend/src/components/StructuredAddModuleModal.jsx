@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { api } from "@/api/client";
 import VideoUrlInput from "@/components/VideoUrlInput";
 
@@ -448,9 +449,9 @@ export default function StructuredAddModuleModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-2xl transition-all my-8 max-h-[90vh] flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-900/75 p-4 backdrop-blur-xs">
+      <div className="relative w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-6 shadow-2xl transition-all my-8 max-h-[90vh] flex flex-col z-[101]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 pb-4">
           <div>
@@ -1029,6 +1030,7 @@ export default function StructuredAddModuleModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

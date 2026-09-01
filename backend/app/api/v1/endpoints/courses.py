@@ -6,7 +6,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 
 from app.api.deps import AuthorUser, CurrentUser, DbSession
+from app.core.exceptions import NotFoundError
 from app.models.enums import CourseStatus
+from app.repositories.course import CourseRepository
 from app.schemas.common import DataResponse, PaginatedResponse, PaginationParams, pagination_params
 from app.schemas.course import CourseCreate, CourseRead, CourseUpdate
 from app.services.course import CourseService
@@ -54,6 +56,56 @@ async def get_course(
 ) -> DataResponse[CourseRead]:
     course = await CourseService(db).get_course(viewer, course_id)
     return DataResponse(data=CourseRead.model_validate(course))
+
+
+@router.get("/{course_id}/syllabus")
+async def get_course_syllabus(
+    course_id: UUID,
+    viewer: CurrentUser,
+    db: DbSession,
+):
+    """Syllabus preview for learners/guests before enrolling."""
+    course = await CourseRepository(db).get_with_structure(course_id)
+    if course is None or (course.status != CourseStatus.PUBLISHED and not viewer.role.can_author_courses):
+        raise NotFoundError("Course not found.")
+
+    modules = []
+    for m in sorted(course.modules, key=lambda x: x.display_order):
+        contents = [
+            {
+                "id": str(c.id),
+                "title": c.title,
+                "contentType": c.content_type.value,
+                "displayOrder": c.display_order,
+            }
+            for c in sorted(m.contents, key=lambda x: x.display_order)
+        ]
+        quiz = None
+        if m.quiz:
+            quiz = {
+                "id": str(m.quiz.id),
+                "title": m.quiz.title,
+                "passingScore": float(m.quiz.passing_score),
+            }
+        modules.append({
+            "id": str(m.id),
+            "title": m.title,
+            "description": m.description,
+            "displayOrder": m.display_order,
+            "contents": contents,
+            "quiz": quiz,
+        })
+
+    return DataResponse(
+        data={
+            "id": str(course.id),
+            "title": course.title,
+            "category": course.category,
+            "description": course.description,
+            "allowSelfEnrollment": course.allow_self_enrollment,
+            "modules": modules,
+        }
+    )
 
 
 @router.patch("/{course_id}", response_model=DataResponse[CourseRead])
