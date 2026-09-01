@@ -2,7 +2,7 @@
 
 import json
 from functools import lru_cache
-from typing import Any, Literal
+from typing import Any, Literal, Union
 
 from pydantic import PostgresDsn, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     # --- Enterprise SSO (Google Workspace, OIDC) ---
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
-    SSO_ALLOWED_DOMAINS: list[str] = []
+    SSO_ALLOWED_DOMAINS: Union[list[str], str] = []
     SSO_AUTO_PROVISION: bool = True
     SSO_DEFAULT_ROLE: str = "USER"
     FRONTEND_URL: str = "http://localhost:5173"
@@ -62,22 +62,26 @@ class Settings(BaseSettings):
     PDFMONKEY_BASE_URL: str = "https://api.pdfmonkey.io/api/v1"
 
     # --- CORS ---
-    BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGINS: Union[list[str], str] = ["http://localhost:5173"]
 
-    @field_validator("BACKEND_CORS_ORIGINS", "SSO_ALLOWED_DOMAINS", mode="before")
+    @field_validator("BACKEND_CORS_ORIGINS", "SSO_ALLOWED_DOMAINS", mode="after")
     @classmethod
-    def parse_str_list(cls, value: Any) -> list[str]:
+    def assemble_cors_origins(cls, value: Any) -> list[str]:
         if isinstance(value, str):
-            value = value.strip()
-            if not value:
+            val = value.strip()
+            if not val:
                 return []
-            if value.startswith("[") and value.endswith("]"):
+            if val.startswith("[") and val.endswith("]"):
                 try:
-                    return json.loads(value)
+                    parsed = json.loads(val)
+                    if isinstance(parsed, list):
+                        return [str(item).strip() for item in parsed if str(item).strip()]
                 except Exception:
                     pass
-            return [item.strip() for item in value.split(",") if item.strip()]
-        return value if isinstance(value, list) else []
+            return [item.strip() for item in val.split(",") if item.strip()]
+        if isinstance(value, (list, tuple, set)):
+            return [str(item).strip() for item in value if str(item).strip()]
+        return []
 
     @computed_field
     @property
