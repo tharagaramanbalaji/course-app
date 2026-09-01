@@ -63,6 +63,7 @@ class Settings(BaseSettings):
 
     # --- CORS ---
     BACKEND_CORS_ORIGINS: Union[list[str], str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGIN_REGEX: str | None = r"^https:\/\/.*\.vercel\.app$"
 
     @field_validator("BACKEND_CORS_ORIGINS", "SSO_ALLOWED_DOMAINS", mode="after")
     @classmethod
