@@ -1,16 +1,17 @@
-# 🚀 Full-Stack Production Deployment Guide
+# 🚀 100% Free Production Deployment Guide
 
-This guide walks you through deploying **CourseApp / LearnFlow** to production using:
-- **Backend & Database**: [Render](https://render.com) (FastAPI + Managed PostgreSQL)
-- **Frontend**: [Vercel](https://vercel.com) (React + Vite Single-Page Application)
+Deploy the entire **CourseApp / LearnFlow** application completely **FREE** with no credit card or paid blueprint required:
+- **Backend**: [Render](https://render.com) (Free Python Web Service)
+- **Database**: [Render](https://render.com) (Free PostgreSQL Instance) or [Neon](https://neon.tech) / [Supabase](https://supabase.com)
+- **Frontend**: [Vercel](https://vercel.com) (Free Hobby Tier)
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture
 
 ```
                ┌───────────────────────────────┐
-               │         Vercel (SPA)          │
+               │      Vercel Free Tier (SPA)   │
                │  https://your-app.vercel.app  │
                └───────────────┬───────────────┘
                                │
@@ -18,7 +19,7 @@ This guide walks you through deploying **CourseApp / LearnFlow** to production u
                                │
                                ▼
                ┌───────────────────────────────┐
-               │     Render Web Service        │
+               │   Render Free Web Service     │
                │ https://your-api.onrender.com │
                └───────────────┬───────────────┘
                                │
@@ -26,140 +27,116 @@ This guide walks you through deploying **CourseApp / LearnFlow** to production u
                                │
                                ▼
                ┌───────────────────────────────┐
-               │   Render Managed PostgreSQL   │
+               │    Render Free PostgreSQL     │
                │    (Internal Connection)      │
                └───────────────────────────────┘
 ```
 
 ---
 
-## Part 1: Deploy Backend & Database on Render
+## Step 1: Create Free PostgreSQL Database on Render
 
-### Option A: 1-Click Render Blueprint (Recommended)
+1. Log into your free **[Render Dashboard](https://dashboard.render.com)**.
+2. In the top right, click **New +** → **PostgreSQL**.
+3. Set the configuration:
+   - **Name**: `course-app-db`
+   - **Database**: `courseapp`
+   - **User**: `courseapp`
+   - **Region**: Choose the closest region (e.g. Frankfurt, Oregon, Singapore, Ohio)
+   - **Instance Type**: Select **Free**
+4. Click **Create Database**.
+5. Once created, copy the **Internal Database URL** (e.g., `postgresql://courseapp:...@dpg-...:5432/courseapp`).
+   *(If deploying from outside Render, copy the **External Database URL**)*.
 
-1. Push your latest code to your GitHub repository (`main` branch).
-2. Log into the **[Render Dashboard](https://dashboard.render.com)**.
-3. Click **"New +"** in the top navigation and select **"Blueprint"**.
-4. Connect your GitHub repository (`course-app`).
-5. Render will automatically detect `render.yaml` and configure:
-   - **PostgreSQL Database** (`course-app-db`)
-   - **FastAPI Web Service** (`course-app-backend`)
-   - Auto-generated `SECRET_KEY`
-   - Auto-connected `DATABASE_URL`
-   - Build & Migration command: `pip install -r requirements.txt && python scripts/setup_db.py`
-6. Click **"Apply"** to launch deployment.
-7. Once deployed, copy your Render Web Service URL:
+---
+
+## Step 2: Create Free Web Service on Render (Backend)
+
+1. In the Render Dashboard, click **New +** → **Web Service**.
+2. Select **"Build and deploy from a Git repository"** and choose your repository (`course-app`).
+3. Fill in the deployment settings:
+   - **Name**: `course-app-backend`
+   - **Region**: Same region as your database
+   - **Branch**: `main`
+   - **Root Directory**: `backend`
+   - **Language**: `Python 3`
+   - **Build Command**:
+     ```bash
+     pip install -r requirements.txt && python scripts/setup_db.py
+     ```
+   - **Start Command**:
+     ```bash
+     uvicorn app.main:app --host 0.0.0.0 --port $PORT
+     ```
+   - **Instance Type**: Select **Free**
+4. Click **"Advanced"** at the bottom:
+   - **Health Check Path**: `/api/v1/health`
+5. Under **Environment Variables**, click **"Add Environment Variable"** and enter:
+
+| Key | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `postgresql://...` *(Paste Internal DB URL from Step 1)* | Database connection |
+| `SECRET_KEY` | `your-long-random-secret-key-32-chars-or-more!` | Token encryption |
+| `ENVIRONMENT` | `production` | Production mode |
+| `DEBUG` | `false` | Disable debug logs |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Token expiry |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh expiry |
+| `FRONTEND_URL` | `https://placeholder.vercel.app` | *Update with real Vercel URL in Step 4* |
+| `BACKEND_CORS_ORIGINS` | `https://placeholder.vercel.app` | *Update with real Vercel URL in Step 4* |
+
+6. Click **Create Web Service**.
+7. Render will build the service, run migrations (`alembic upgrade head`), seed default demo users, and import the 9 master courses automatically!
+8. Copy your live backend URL from the top of the page:
    `https://course-app-backend-xxxx.onrender.com`
 
 ---
 
-### Option B: Manual Render Setup (If not using Blueprint)
+## Step 3: Deploy Frontend on Vercel (100% Free)
 
-1. **Create PostgreSQL Database**:
-   - In Render Dashboard, click **New +** → **PostgreSQL**.
-   - Name: `course-app-db`
-   - Database: `courseapp`
-   - User: `courseapp`
-   - Click **Create Database** and copy the **Internal Database URL** (or External if connecting externally).
-
-2. **Create Web Service**:
-   - Click **New +** → **Web Service**.
-   - Connect your GitHub repository.
-   - **Root Directory**: `backend`
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt && python scripts/setup_db.py`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Health Check Path**: `/api/v1/health`
-
-3. **Add Environment Variables**:
-   Under the **Environment** tab of your web service, add:
-   | Key | Value | Notes |
-   |---|---|---|
-   | `DATABASE_URL` | `postgresql://...` | Linked from your Render DB |
-   | `SECRET_KEY` | *(Click "Generate" or paste random 64-char string)* | JWT signing key |
-   | `ENVIRONMENT` | `production` | Production mode |
-   | `DEBUG` | `false` | Disables debug logs |
-   | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | 1 hour access tokens |
-   | `REFRESH_TOKEN_EXPIRE_DAYS` | `7` | 7-day refresh tokens |
-   | `FRONTEND_URL` | `https://<your-vercel-app>.vercel.app` | Updated after Vercel deploy |
-   | `BACKEND_CORS_ORIGINS` | `["https://<your-vercel-app>.vercel.app"]` | Updated after Vercel deploy |
-
----
-
-## Part 2: Deploy Frontend on Vercel
-
-1. Log into the **[Vercel Dashboard](https://vercel.com/dashboard)**.
+1. Log into your free **[Vercel Dashboard](https://vercel.com/dashboard)**.
 2. Click **"Add New..."** → **"Project"**.
 3. Import your GitHub repository (`course-app`).
-4. Configure the project settings:
+4. Configure project settings:
    - **Framework Preset**: `Vite`
-   - **Root Directory**: Click "Edit" and choose `frontend`
-   - **Build Command**: `npm run build` *(default)*
-   - **Output Directory**: `dist` *(default)*
-   - **Install Command**: `npm install` *(default)*
-5. **Add Environment Variable**:
-   Under **Environment Variables**, add:
+   - **Root Directory**: Click "Edit" and select `frontend`
+   - **Build & Output Settings**: Leave defaults (`npm run build` and `dist`)
+5. Open **Environment Variables** and add:
    - **Key**: `VITE_API_BASE_URL`
    - **Value**: `https://<your-render-backend-url>.onrender.com/api/v1`
-   *(Replace with your actual Render backend URL followed by `/api/v1`)*
+   *(e.g., `https://course-app-backend-xxxx.onrender.com/api/v1`)*
 6. Click **"Deploy"**.
-7. Once deployed, copy your Vercel URL (e.g. `https://course-app-xxxx.vercel.app`).
+7. Once finished, copy your live Vercel URL:
+   `https://course-app-xxxx.vercel.app`
 
 ---
 
-## Part 3: Link CORS on Render
+## Step 4: Update CORS on Render
 
 Now that you have your live Vercel domain:
 
-1. Open your **Render Dashboard** → click your **Backend Web Service** → go to **Environment**.
-2. Update the following environment variables:
-   - **`FRONTEND_URL`**: `https://your-app.vercel.app`
-   - **`BACKEND_CORS_ORIGINS`**: `["https://your-app.vercel.app"]`
-   *(You can also use comma-separated format: `https://your-app.vercel.app,http://localhost:5173`)*
-3. Click **"Save Changes"** (Render will automatically redeploy the backend with the new CORS configuration).
+1. Open your **Render Dashboard** → click your **Backend Web Service** (`course-app-backend`) → **Environment**.
+2. Update the two variables with your live Vercel URL:
+   - **`FRONTEND_URL`**: `https://course-app-xxxx.vercel.app`
+   - **`BACKEND_CORS_ORIGINS`**: `https://course-app-xxxx.vercel.app`
+3. Click **"Save Changes"** (Render will redeploy with CORS active in under 30 seconds).
 
 ---
 
-## Part 4: Default Seed Accounts
+## Step 5: Test & Login
 
-The automated bootstrap script (`scripts/setup_db.py`) seeds three default accounts with distinct role permissions on first launch:
+Open your Vercel URL in the browser and log in with any of the pre-seeded accounts:
 
-| Role | Email | Default Password | Access Level |
+| Role | Email | Password | What You Can Do |
 |---|---|---|---|
-| 👑 **Admin** | `admin@example.com` | `Admin123!` | User management, site-wide analytics, system config |
-| 🧑‍🏫 **Instructor** | `instructor@example.com` | `Teach123!` | Course builder, module/lesson editor, assignment manager |
-| 🎓 **Learner** | `learner@example.com` | `Learn123!` | Course catalog, video & text lesson player, quizzes |
-
-> [!TIP]
-> After logging in for the first time, you can change passwords or invite new users directly from the **Users** settings page.
+| 👑 **Admin** | `admin@example.com` | `Admin123!` | System settings, user management, site analytics |
+| 🧑‍🏫 **Instructor** | `instructor@example.com` | `Teach123!` | Course studio, markdown editor, curriculum builder |
+| 🎓 **Learner** | `learner@example.com` | `Learn123!` | Course catalogue, video & text lessons, quiz attempts |
 
 ---
 
-## Part 5: Optional Integrations
+## 🛠️ Verification Checklist
 
-### 1. Google Workspace Single Sign-On (SSO)
-1. Go to the **[Google Cloud Console](https://console.cloud.google.com/)** → **APIs & Services** → **Credentials**.
-2. Create an **OAuth 2.0 Client ID** (Web application).
-3. **Authorized JavaScript origins**:
-   - `https://your-app.vercel.app`
-4. **Authorized redirect URIs**:
-   - `https://your-backend.onrender.com/api/v1/sso/google/callback`
-5. Copy the Client ID & Secret and add them to Render Environment Variables:
-   - `GOOGLE_CLIENT_ID`: `your-google-client-id.apps.googleusercontent.com`
-   - `GOOGLE_CLIENT_SECRET`: `your-google-client-secret`
-   - `SSO_ALLOWED_DOMAINS`: `["yourcompany.com"]` *(or leave empty for all Google accounts)*
-
-### 2. PDF Certificate Generation (PDFMonkey)
-1. Register on **[PDFMonkey.io](https://www.pdfmonkey.io/)** and create a certificate template.
-2. In Render Environment Variables, set:
-   - `PDFMONKEY_API_KEY`: `your-pdfmonkey-api-key`
-   - `PDFMONKEY_TEMPLATE_ID`: `your-template-id`
-
----
-
-## 🛠️ Verification & Troubleshooting Checklist
-
-- [ ] **Backend Health Check**: Open `https://your-backend.onrender.com/api/v1/health` (should return `{"status":"ok"}`).
-- [ ] **Database Connection Check**: Open `https://your-backend.onrender.com/api/v1/health/db` (should return `{"status":"ok","database":"reachable"}`).
-- [ ] **Frontend Client-Side Routing**: Refresh any deep page (like `/courses` or `/settings`) on Vercel; `vercel.json` rewrites prevent 404 errors.
-- [ ] **CORS Verification**: Open browser DevTools Network tab on your Vercel site; API requests should succeed with status `200` without CORS errors.
+- [ ] **Backend Health Check**: Open `https://your-backend.onrender.com/api/v1/health` in browser $\to$ returns `{"status":"ok"}`.
+- [ ] **Database Connection Check**: Open `https://your-backend.onrender.com/api/v1/health/db` $\to$ returns `{"status":"ok","database":"reachable"}`.
+- [ ] **SPA Routing**: Refresh any deep page (like `/courses` or `/settings`) on Vercel; `vercel.json` rewrites prevent 404 errors.
+- [ ] **Login Test**: Sign in with `learner@example.com` / `Learn123!` and launch any course lesson!
