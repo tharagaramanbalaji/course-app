@@ -1,10 +1,22 @@
 """Application settings, loaded from environment / .env."""
 
+import json
 from functools import lru_cache
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import PostgresDsn, computed_field
+from pydantic import PostgresDsn, computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _normalize_async_db_url(url: str) -> str:
+    """Ensure PostgreSQL connection strings use the asyncpg driver."""
+    if not url:
+        return url
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://") and not url.startswith("postgresql+asyncpg://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
 
 
 class Settings(BaseSettings):
@@ -21,14 +33,14 @@ class Settings(BaseSettings):
     DEBUG: bool = True
 
     # --- Database ---
+    DATABASE_URL: str | None = None
+    DATABASE_URL_OVERRIDE: str | None = None
+
     POSTGRES_HOST: str = "localhost"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "courseapp"
     POSTGRES_PASSWORD: str = "courseapp"
     POSTGRES_DB: str = "courseapp"
-
-    # Set directly (e.g. in tests) to bypass the assembled Postgres URL.
-    DATABASE_URL_OVERRIDE: str | None = None
 
     # --- Auth ---
     SECRET_KEY: str = "change-me-in-every-real-environment"
@@ -52,12 +64,29 @@ class Settings(BaseSettings):
     # --- CORS ---
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:5173"]
 
+    @field_validator("BACKEND_CORS_ORIGINS", "SSO_ALLOWED_DOMAINS", mode="before")
+    @classmethod
+    def parse_str_list(cls, value: Any) -> list[str]:
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return []
+            if value.startswith("[") and value.endswith("]"):
+                try:
+                    return json.loads(value)
+                except Exception:
+                    pass
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value if isinstance(value, list) else []
+
     @computed_field
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         """Async driver URL used by the app and by Alembic."""
         if self.DATABASE_URL_OVERRIDE:
-            return self.DATABASE_URL_OVERRIDE
+            return _normalize_async_db_url(self.DATABASE_URL_OVERRIDE)
+        if self.DATABASE_URL:
+            return _normalize_async_db_url(self.DATABASE_URL)
         return str(
             PostgresDsn.build(
                 scheme="postgresql+asyncpg",
