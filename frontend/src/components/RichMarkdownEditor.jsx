@@ -92,7 +92,7 @@ export default function RichMarkdownEditor({ value, onChange, placeholder = "Wri
               type="button"
               onClick={() => insertSyntax("# ")}
               title="Heading 1"
-              className="px-2 py-1 text-xs font-extrabold rounded-md hover:bg-slate-200 text-slate-700"
+              className="px-2 py-1 text-xs font-extrabold rounded-md hover:bg-slate-200 text-slate-700 transition"
             >
               H1
             </button>
@@ -100,7 +100,7 @@ export default function RichMarkdownEditor({ value, onChange, placeholder = "Wri
               type="button"
               onClick={() => insertSyntax("## ")}
               title="Heading 2"
-              className="px-2 py-1 text-xs font-bold rounded-md hover:bg-slate-200 text-slate-700"
+              className="px-2 py-1 text-xs font-bold rounded-md hover:bg-slate-200 text-slate-700 transition"
             >
               H2
             </button>
@@ -108,7 +108,7 @@ export default function RichMarkdownEditor({ value, onChange, placeholder = "Wri
               type="button"
               onClick={() => insertSyntax("### ")}
               title="Heading 3"
-              className="px-2 py-1 text-xs font-bold rounded-md hover:bg-slate-200 text-slate-700"
+              className="px-2 py-1 text-xs font-bold rounded-md hover:bg-slate-200 text-slate-700 transition"
             >
               H3
             </button>
@@ -118,34 +118,50 @@ export default function RichMarkdownEditor({ value, onChange, placeholder = "Wri
             <button
               type="button"
               onClick={() => insertSyntax("**", "**")}
-              title="Bold"
-              className="px-2 py-1 text-xs font-bold rounded-md hover:bg-slate-200 text-slate-800"
+              title="Bold (**text**)"
+              className="px-2 py-1 text-xs font-extrabold rounded-md hover:bg-slate-200 text-slate-900 transition"
             >
               B
             </button>
             <button
               type="button"
               onClick={() => insertSyntax("*", "*")}
-              title="Italic"
-              className="px-2 py-1 text-xs italic rounded-md hover:bg-slate-200 text-slate-800"
+              title="Italic (*text*)"
+              className="px-2 py-1 text-xs italic font-serif font-bold rounded-md hover:bg-slate-200 text-slate-900 transition"
             >
               I
             </button>
             <button
               type="button"
+              onClick={() => insertSyntax("~~", "~~")}
+              title="Strikethrough (~~text~~)"
+              className="px-2 py-1 text-xs line-through rounded-md hover:bg-slate-200 text-slate-700 transition"
+            >
+              S
+            </button>
+            <button
+              type="button"
               onClick={() => insertSyntax("`", "`")}
-              title="Inline Code"
-              className="px-2 py-1 text-xs font-mono rounded-md hover:bg-slate-200 text-slate-800"
+              title="Inline Code (`code`)"
+              className="px-2 py-1 text-xs font-mono rounded-md hover:bg-slate-200 text-slate-800 transition"
             >
               &lt;/&gt;
             </button>
             <button
               type="button"
+              onClick={() => insertSyntax("[", "](https://example.com)")}
+              title="Link ([title](url))"
+              className="px-2 py-1 text-xs font-medium rounded-md hover:bg-slate-200 text-slate-700 transition"
+            >
+              🔗 Link
+            </button>
+            <button
+              type="button"
               onClick={() => insertSyntax("\n```python\n", "\n```\n")}
               title="Code Block"
-              className="px-2 py-1 text-xs font-mono bg-slate-200/80 rounded-md hover:bg-slate-300 text-slate-900 font-semibold"
+              className="px-2 py-1 text-xs font-mono bg-slate-200/80 rounded-md hover:bg-slate-300 text-slate-900 font-semibold transition"
             >
-              ``` Code Block
+              ``` Code
             </button>
 
             <span className="h-4 w-px bg-slate-300 mx-1" />
@@ -153,18 +169,34 @@ export default function RichMarkdownEditor({ value, onChange, placeholder = "Wri
             <button
               type="button"
               onClick={() => insertSyntax("- ")}
-              title="Bullet List"
-              className="px-2 py-1 text-xs rounded-md hover:bg-slate-200 text-slate-700"
+              title="Bullet List (- item)"
+              className="px-2 py-1 text-xs rounded-md hover:bg-slate-200 text-slate-700 transition"
             >
               • List
             </button>
             <button
               type="button"
+              onClick={() => insertSyntax("1. ")}
+              title="Numbered List (1. item)"
+              className="px-2 py-1 text-xs rounded-md hover:bg-slate-200 text-slate-700 transition"
+            >
+              1. List
+            </button>
+            <button
+              type="button"
               onClick={() => insertSyntax("> ")}
-              title="Quote"
-              className="px-2 py-1 text-xs rounded-md hover:bg-slate-200 text-slate-700"
+              title="Quote (> quote)"
+              className="px-2 py-1 text-xs rounded-md hover:bg-slate-200 text-slate-700 transition"
             >
               &quot; Quote
+            </button>
+            <button
+              type="button"
+              onClick={() => insertSyntax("\n| Column 1 | Column 2 |\n|---|---|\n| Value 1 | Value 2 |\n")}
+              title="Insert Table"
+              className="px-2 py-1 text-xs rounded-md hover:bg-slate-200 text-slate-700 transition"
+            >
+              ⊞ Table
             </button>
 
             {/* Template Selector */}
