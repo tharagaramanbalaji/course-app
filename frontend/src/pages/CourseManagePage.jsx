@@ -349,7 +349,8 @@ export default function CourseManagePage() {
   });
 
   const updateContent = useMutation({
-    mutationFn: ({ contentId, payload }) => api.patch(`/contents/${contentId}`, payload),
+    mutationFn: ({ moduleId, contentId, payload }) =>
+      api.patch(`/courses/${courseId}/modules/${moduleId}/contents/${contentId}`, payload),
     onSuccess: () => {
       clearError();
       refreshModules();
@@ -360,7 +361,8 @@ export default function CourseManagePage() {
   });
 
   const deleteContent = useMutation({
-    mutationFn: (contentId) => api.delete(`/contents/${contentId}`),
+    mutationFn: ({ moduleId, contentId }) =>
+      api.delete(`/courses/${courseId}/modules/${moduleId}/contents/${contentId}`),
     onSuccess: () => {
       clearError();
       refreshModules();
@@ -416,6 +418,7 @@ export default function CourseManagePage() {
     if (!activeSelection || activeSelection.type !== "content") return;
     clearError();
     updateContent.mutate({
+      moduleId: activeSelection.moduleId,
       contentId: activeSelection.contentId,
       payload: {
         title: lessonEditForm.title,
@@ -759,7 +762,10 @@ export default function CourseManagePage() {
                             confirmLabel: "Delete Lesson",
                             variant: "danger",
                             onConfirm: () => {
-                              deleteContent.mutate(activeContent.id);
+                              deleteContent.mutate({
+                                moduleId: activeSelection.moduleId,
+                                contentId: activeContent.id,
+                              });
                               closeConfirmModal();
                             },
                           });
