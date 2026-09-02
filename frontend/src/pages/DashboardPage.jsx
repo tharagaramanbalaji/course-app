@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { api, getApiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
+import CertificateModal from "@/components/CertificateModal";
 import ErrorNote from "@/components/ErrorNote";
 import { containerStaggerVariants, itemFadeUpVariants } from "@/utils/motion";
 
@@ -50,9 +52,16 @@ function ActionCard({ to, title, description, cta, icon, badge }) {
 }
 
 function LearnerDashboard() {
+  const [selectedCert, setSelectedCert] = useState(null);
+
   const dashboardQuery = useQuery({
     queryKey: ["my-dashboard"],
     queryFn: async () => (await api.get("/my/dashboard")).data.data,
+  });
+
+  const certsQuery = useQuery({
+    queryKey: ["my-certificates"],
+    queryFn: async () => (await api.get("/my/certificates")).data.data,
   });
 
   if (dashboardQuery.isPending) {
@@ -268,12 +277,48 @@ function LearnerDashboard() {
                 <p className="text-[11px] text-emerald-200">{data.certificates} Verified Certificate(s)</p>
               </div>
             </div>
-            <p className="mt-3 text-xs text-emerald-100/80 leading-relaxed">
-              Complete all lessons and pass the final module quizzes to unlock official corporate completion certificates.
-            </p>
+
+            {certsQuery.data && certsQuery.data.length > 0 ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-emerald-100 font-semibold">Your Earned Credentials:</p>
+                <div className="space-y-2">
+                  {certsQuery.data.map((cert) => (
+                    <div
+                      key={cert.id}
+                      className="flex items-center justify-between rounded-xl bg-white/10 p-3 border border-white/15"
+                    >
+                      <div className="min-w-0 flex-1 mr-2">
+                        <p className="text-xs font-bold text-white truncate">{cert.courseName}</p>
+                        <p className="text-[10px] text-emerald-200 font-mono">
+                          {cert.certificateNumber} &bull; {cert.finalScore}%
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCert(cert)}
+                        className="rounded-lg bg-white px-2.5 py-1 text-xs font-extrabold text-[#0A6847] hover:bg-emerald-50 transition shrink-0 shadow-2xs"
+                      >
+                        🎓 View
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-emerald-100/80 leading-relaxed">
+                Complete all lessons and pass the final module quizzes to unlock official corporate completion certificates.
+              </p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Certificate Modal */}
+      <CertificateModal
+        isOpen={Boolean(selectedCert)}
+        onClose={() => setSelectedCert(null)}
+        certificate={selectedCert}
+      />
     </div>
   );
 }

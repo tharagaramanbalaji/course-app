@@ -36,6 +36,7 @@ export default function LearnerQuizPanel({ courseId, module, onProgress }) {
     queryClient.invalidateQueries({ queryKey: ["learner-quiz", courseId, module.id] });
     queryClient.invalidateQueries({ queryKey: ["learner-modules", courseId] });
     queryClient.invalidateQueries({ queryKey: ["my-course", courseId] });
+    queryClient.invalidateQueries({ queryKey: ["course-certificate", courseId] });
     onProgress?.();
   }
 
