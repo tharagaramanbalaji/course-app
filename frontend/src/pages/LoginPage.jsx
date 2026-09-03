@@ -20,7 +20,7 @@ function canAccess(role, path) {
 const SEED_LOGINS = [
   ["admin@example.com", "Admin123!", "ADMIN"],
   ["instructor@example.com", "Teach123!", "INSTRUCTOR"],
-  ["user1@gmail.com", "tharak28", "USER"],
+  ["learner@example.com", "Learn123!", "USER"],
 ];
 
 export default function LoginPage() {
