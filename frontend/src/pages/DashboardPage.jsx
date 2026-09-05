@@ -5,7 +5,6 @@ import { Link } from "react-router-dom";
 
 import { api, getApiErrorMessage } from "@/api/client";
 import { useAuth } from "@/auth/useAuth";
-import CertificateModal from "@/components/CertificateModal";
 import ErrorNote from "@/components/ErrorNote";
 import { containerStaggerVariants, itemFadeUpVariants } from "@/utils/motion";
 
@@ -52,10 +51,11 @@ function ActionCard({ to, title, description, cta, icon, badge }) {
 }
 
 function LearnerDashboard() {
-  const [selectedCert, setSelectedCert] = useState(null);
+  const [downloadingCertId, setDownloadingCertId] = useState(null);
+  const [certError, setCertError] = useState("");
 
   const dashboardQuery = useQuery({
-    queryKey: ["my-dashboard"],
+    queryKey: ["learner-dashboard"],
     queryFn: async () => (await api.get("/my/dashboard")).data.data,
   });
 
@@ -63,6 +63,32 @@ function LearnerDashboard() {
     queryKey: ["my-certificates"],
     queryFn: async () => (await api.get("/my/certificates")).data.data,
   });
+
+  async function handleDownloadCertificate(cert) {
+    if (!cert || downloadingCertId) return;
+    setDownloadingCertId(cert.id);
+    setCertError("");
+    try {
+      const response = await api.get(`/my/certificates/${cert.id}/download`, {
+        responseType: "blob",
+      });
+      const blobType = response.data?.type || "";
+      const headerType = response.headers?.["content-type"] || "";
+      const isPdf = blobType.includes("pdf") || headerType.includes("pdf");
+      const extension = isPdf ? "pdf" : "txt";
+
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${cert.certificateNumber}.${extension}`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setCertError(getApiErrorMessage(err) || "Failed to download certificate.");
+    } finally {
+      setDownloadingCertId(null);
+    }
+  }
 
   if (dashboardQuery.isPending) {
     return (
@@ -295,14 +321,28 @@ function LearnerDashboard() {
                       </div>
                       <button
                         type="button"
-                        onClick={() => setSelectedCert(cert)}
-                        className="rounded-lg bg-white px-2.5 py-1 text-xs font-extrabold text-[#0A6847] hover:bg-emerald-50 transition shrink-0 shadow-2xs"
+                        onClick={() => handleDownloadCertificate(cert)}
+                        disabled={downloadingCertId === cert.id}
+                        className="rounded-lg bg-white px-2.5 py-1 text-xs font-extrabold text-[#0A6847] hover:bg-emerald-50 transition shrink-0 shadow-2xs disabled:opacity-50 flex items-center gap-1"
+                        title="Download Certificate PDF"
                       >
-                        🎓 View
+                        {downloadingCertId === cert.id ? (
+                          <span>Downloading...</span>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download PDF</span>
+                          </>
+                        )}
                       </button>
                     </div>
                   ))}
                 </div>
+                {certError && (
+                  <p className="mt-2 text-xs text-red-300">{certError}</p>
+                )}
               </div>
             ) : (
               <p className="mt-3 text-xs text-emerald-100/80 leading-relaxed">
@@ -312,13 +352,6 @@ function LearnerDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Certificate Modal */}
-      <CertificateModal
-        isOpen={Boolean(selectedCert)}
-        onClose={() => setSelectedCert(null)}
-        certificate={selectedCert}
-      />
     </div>
   );
 }
