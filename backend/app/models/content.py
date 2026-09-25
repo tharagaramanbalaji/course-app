@@ -50,7 +50,11 @@ class Content(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     display_order: Mapped[int] = mapped_column(Integer, nullable=False)
 
     module: Mapped[Module] = relationship(back_populates="contents")
-    progress_records: Mapped[list[ContentProgress]] = relationship(back_populates="content")
+    progress_records: Mapped[list[ContentProgress]] = relationship(
+        back_populates="content",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("module_id", "display_order", name="uq_contents_module_id_display_order"),

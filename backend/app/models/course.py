@@ -57,8 +57,16 @@ class Course(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         order_by="Module.display_order",
         passive_deletes=True,
     )
-    assignments: Mapped[list[Assignment]] = relationship(back_populates="course")
-    enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course")
+    assignments: Mapped[list[Assignment]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    enrollments: Mapped[list[Enrollment]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         Index("ix_courses_created_by", "created_by"),

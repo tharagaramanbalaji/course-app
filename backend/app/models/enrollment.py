@@ -73,6 +73,8 @@ class Enrollment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
     certificate: Mapped[Certificate | None] = relationship(
         back_populates="enrollment",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
         uselist=False,
     )
 

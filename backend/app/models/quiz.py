@@ -61,7 +61,11 @@ class Quiz(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         order_by="Question.display_order",
         passive_deletes=True,
     )
-    attempts: Mapped[list[QuizAttempt]] = relationship(back_populates="quiz")
+    attempts: Mapped[list[QuizAttempt]] = relationship(
+        back_populates="quiz",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         CheckConstraint(
@@ -102,7 +106,11 @@ class Question(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         order_by="Answer.display_order",
         passive_deletes=True,
     )
-    attempt_answers: Mapped[list[QuizAttemptAnswer]] = relationship(back_populates="question")
+    attempt_answers: Mapped[list[QuizAttemptAnswer]] = relationship(
+        back_populates="question",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("quiz_id", "display_order", name="uq_questions_quiz_id_display_order"),

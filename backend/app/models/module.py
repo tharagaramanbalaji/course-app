@@ -47,7 +47,11 @@ class Module(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         passive_deletes=True,
         uselist=False,
     )
-    progress_records: Mapped[list[ModuleProgress]] = relationship(back_populates="module")
+    progress_records: Mapped[list[ModuleProgress]] = relationship(
+        back_populates="module",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("course_id", "display_order", name="uq_modules_course_id_display_order"),
