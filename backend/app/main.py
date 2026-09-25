@@ -30,6 +30,10 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+    @app.get("/health", tags=["Infrastructure"], include_in_schema=False)
+    async def root_health():
+        return {"status": "ok"}
+
     return app
 
 

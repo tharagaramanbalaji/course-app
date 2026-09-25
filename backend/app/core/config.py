@@ -62,7 +62,11 @@ class Settings(BaseSettings):
     PDFMONKEY_BASE_URL: str = "https://api.pdfmonkey.io/api/v1"
 
     # --- CORS ---
-    BACKEND_CORS_ORIGINS: Union[list[str], str] = ["http://localhost:5173"]
+    BACKEND_CORS_ORIGINS: Union[list[str], str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://learnflowbydatacaliper.vercel.app",
+    ]
     BACKEND_CORS_ORIGIN_REGEX: str | None = r"^https:\/\/.*\.vercel\.app$"
 
     @field_validator("BACKEND_CORS_ORIGINS", "SSO_ALLOWED_DOMAINS", mode="after")

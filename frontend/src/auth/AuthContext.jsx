@@ -32,6 +32,16 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Reset user state when an unauthorized event is fired (e.g. token expired/revoked).
+  useEffect(() => {
+    function handleUnauthorized() {
+      tokenStore.clear();
+      setUser(null);
+    }
+    window.addEventListener("courseapp:unauthorized", handleUnauthorized);
+    return () => window.removeEventListener("courseapp:unauthorized", handleUnauthorized);
+  }, []);
+
   const login = useCallback(async (email, password) => {
     const { data } = await api.post("/auth/login", { email, password });
     tokenStore.save(data.data);

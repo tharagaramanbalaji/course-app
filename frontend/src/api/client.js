@@ -56,7 +56,13 @@ api.interceptors.response.use(
     }
 
     const refreshToken = tokenStore.refresh;
-    if (!refreshToken) return Promise.reject(error);
+    if (!refreshToken) {
+      tokenStore.clear();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("courseapp:unauthorized"));
+      }
+      return Promise.reject(error);
+    }
 
     try {
       const { data } = await axios.post(
@@ -69,6 +75,9 @@ api.interceptors.response.use(
       return api(original);
     } catch (refreshError) {
       tokenStore.clear();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("courseapp:unauthorized"));
+      }
       return Promise.reject(refreshError);
     }
   },
