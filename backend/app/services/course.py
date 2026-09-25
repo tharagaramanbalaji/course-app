@@ -4,11 +4,17 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from uuid import UUID
 
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessRuleError, NotFoundError
+from app.models.assignment import Assignment
+from app.models.certificate import Certificate
 from app.models.course import Course
+from app.models.enrollment import Enrollment
 from app.models.enums import CourseStatus
+from app.models.progress import ContentProgress, ModuleProgress
+from app.models.quiz_attempt import QuizAttempt, QuizAttemptAnswer
 from app.models.user import User
 from app.repositories.course import CourseRepository
 from app.schemas.common import PaginationParams
@@ -102,6 +108,50 @@ class CourseService:
                 f"A {course.status.value} course cannot be deleted. "
                 "Only DRAFT or ARCHIVED courses can be removed."
             )
+
+        # 1. Clean up assignments
+        await self.session.execute(
+            delete(Assignment).where(Assignment.course_id == course_id)
+        )
+
+        # 2. Clean up enrollments and their child records
+        enrollment_ids = (
+            await self.session.scalars(
+                select(Enrollment.id).where(Enrollment.course_id == course_id)
+            )
+        ).all()
+
+        if enrollment_ids:
+            # Delete certificates associated with these enrollments
+            await self.session.execute(
+                delete(Certificate).where(Certificate.enrollment_id.in_(enrollment_ids))
+            )
+            # Find and delete quiz attempts and their answer records
+            attempt_ids = (
+                await self.session.scalars(
+                    select(QuizAttempt.id).where(QuizAttempt.enrollment_id.in_(enrollment_ids))
+                )
+            ).all()
+            if attempt_ids:
+                await self.session.execute(
+                    delete(QuizAttemptAnswer).where(QuizAttemptAnswer.attempt_id.in_(attempt_ids))
+                )
+                await self.session.execute(
+                    delete(QuizAttempt).where(QuizAttempt.id.in_(attempt_ids))
+                )
+            # Delete content & module progress records
+            await self.session.execute(
+                delete(ContentProgress).where(ContentProgress.enrollment_id.in_(enrollment_ids))
+            )
+            await self.session.execute(
+                delete(ModuleProgress).where(ModuleProgress.enrollment_id.in_(enrollment_ids))
+            )
+            # Delete enrollments
+            await self.session.execute(
+                delete(Enrollment).where(Enrollment.id.in_(enrollment_ids))
+            )
+
+        # 3. Delete the course (modules, contents, quizzes cascade)
         await self.courses.delete(course)
         await self.session.commit()
 
